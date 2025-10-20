@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SqlEnum
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 from enum import Enum
@@ -31,3 +32,9 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    properties = relationship(
+        "Property", back_populates="agent", cascade="all, delete-orphan"
+    )
+    favorites = relationship(
+        "Favorite", back_populates="user", cascade="all, delete-orphan"
+    )

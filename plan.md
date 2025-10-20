@@ -910,17 +910,152 @@
 
 ### 1. Favorites / Bookmarks
 
+**Purpose:** Allow users to bookmark properties they like. Ensures the `Property.favorites` relationship works.
+
+**Model (`app/models/favorite.py`):**
+
+```python
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from app.database import Base
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "property_id", name="uq_favorites_user_property"),
+    )
+
+    # Relationships
+    user = relationship("User", back_populates="favorites")
+    property = relationship("Property", back_populates="favorites")
+```
+
+**Updates to related models:**
+
+```python
+# app/models/user.py
+from sqlalchemy.orm import relationship
+
+class User(Base):
+    # ... existing fields ...
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
+
+# app/models/property.py
+from sqlalchemy.orm import relationship
+
+class Property(Base):
+    # ... existing fields ...
+    favorites = relationship("Favorite", back_populates="property", cascade="all, delete-orphan")
+```
+
+**Schemas (`app/schemas/favorite.py`):**
+
+```python
+from pydantic import BaseModel
+from datetime import datetime
+
+class FavoriteBase(BaseModel):
+    property_id: int
+
+class FavoriteCreate(FavoriteBase):
+    pass
+
+class FavoriteResponse(BaseModel):
+    id: int
+    user_id: int
+    property_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+```
+
+**Router (`app/routers/favorites.py`):**
+
+```python
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List
+from app.database import SessionLocal
+from app.models.favorite import Favorite
+from app.models.property import Property
+from app.schemas.favorite import FavoriteCreate, FavoriteResponse
+from app.services.auth_service import get_current_user
+
+router = APIRouter(prefix="/favorites", tags=["favorites"])
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@router.post("/{property_id}", response_model=FavoriteResponse, status_code=status.HTTP_201_CREATED)
+def add_favorite(property_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    # Validate property exists
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    # Idempotent: return existing
+    existing = (
+        db.query(Favorite)
+        .filter(Favorite.user_id == current_user["id"], Favorite.property_id == property_id)
+        .first()
+    )
+    if existing:
+        return existing
+
+    fav = Favorite(user_id=current_user["id"], property_id=property_id)
+    db.add(fav)
+    db.commit()
+    db.refresh(fav)
+    return fav
+
+@router.delete("/{property_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_favorite(property_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    fav = (
+        db.query(Favorite)
+        .filter(Favorite.user_id == current_user["id"], Favorite.property_id == property_id)
+        .first()
+    )
+    if not fav:
+        return
+    db.delete(fav)
+    db.commit()
+
+@router.get("/me", response_model=List[FavoriteResponse])
+def list_my_favorites(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    return db.query(Favorite).filter(Favorite.user_id == current_user["id"]).all()
+```
+
+**Migrations:** Create table `favorites` with unique (user_id, property_id) and FKs to `users` and `properties` with CASCADE on delete.
+
 **Endpoints:**
 
-- `POST /favorites/{property_id}`
-- `DELETE /favorites/{property_id}`
-- `GET /users/{id}/favorites`
+- `POST /favorites/{property_id}` — add property to current user's favorites (idempotent)
+- `DELETE /favorites/{property_id}` — remove from favorites
+- `GET /favorites/me` — list current user's favorites
 
 **Deliverables:**
 
-- Favorite model linking user and property
+- `Favorite` model linking user and property with bidirectional relationships
+- Pydantic schemas for create/response
+- Router for add/remove/list
+- Alembic migration for `favorites`
 
-**Tests:** CRUD tests ensuring idempotency and ownership.
+**Tests:**
+
+- CRUD tests ensuring idempotency and ownership
+- Relationship integrity: Property.favorites and User.favorites populated
 
 ### 2. Messaging / Inquiries
 
