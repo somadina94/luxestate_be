@@ -94,7 +94,7 @@
 3. **ORM:** SQLAlchemy 2.0+ with async support
 4. **Migrations:** Alembic
 5. **Authentication:** JWT tokens with refresh mechanism
-6. **File Storage:** Local file system (upgrade to S3 later)
+6. **File Storage:** Cloudinary (cloud image management, CDN, transformations)
 7. **Background Tasks:** FastAPI BackgroundTasks (upgrade to Celery later)
 8. **Caching:** In-memory (upgrade to Redis later)
 9. **Testing:** pytest + pytest-asyncio + httpx
@@ -190,8 +190,10 @@
        ALGORITHM: str = "HS256"
        ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-       # File Storage (Local)
-       UPLOAD_DIR: str = "./uploads"
+       # Cloudinary
+       CLOUDINARY_CLOUD_NAME: str
+       CLOUDINARY_API_KEY: str
+       CLOUDINARY_API_SECRET: str
 
        class Config:
            env_file = ".env"
@@ -202,7 +204,9 @@
    ```
    DATABASE_URL=sqlite:///./luxestate.db
    SECRET_KEY=your-secret-key-here
-   UPLOAD_DIR=./uploads
+   CLOUDINARY_CLOUD_NAME=your-cloud-name
+   CLOUDINARY_API_KEY=your-api-key
+   CLOUDINARY_API_SECRET=your-api-secret
    ```
 
 3. **Add Environment Validation:**
@@ -744,32 +748,43 @@
 1. **Create Image Upload Service (`app/services/image_service.py`):**
 
    ```python
-   import os
-   import uuid
+   import cloudinary
+   import cloudinary.uploader
    from fastapi import UploadFile
    from app.config import settings
 
    class ImageService:
        def __init__(self):
-           self.upload_dir = settings.UPLOAD_DIR
-           os.makedirs(self.upload_dir, exist_ok=True)
+           cloudinary.config(
+               cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+               api_key=settings.CLOUDINARY_API_KEY,
+               api_secret=settings.CLOUDINARY_API_SECRET
+           )
 
-       async def upload_image(self, file: UploadFile, property_id: int) -> str:
-           # Generate unique filename
-           file_extension = file.filename.split('.')[-1]
-           filename = f"{uuid.uuid4()}.{file_extension}"
-           file_path = os.path.join(self.upload_dir, f"properties_{property_id}_{filename}")
+       async def upload_image(self, file: UploadFile, property_id: int) -> dict:
+           # Upload to Cloudinary
+           result = cloudinary.uploader.upload(
+               file.file,
+               folder=f"luxestate/properties/{property_id}",
+               transformation=[
+                   {"width": 1200, "height": 800, "crop": "fill", "quality": "auto"},
+                   {"fetch_format": "auto"}
+               ]
+           )
 
-           # Save file locally
-           with open(file_path, "wb") as buffer:
-               content = await file.read()
-               buffer.write(content)
+           return {
+               "public_id": result["public_id"],
+               "secure_url": result["secure_url"],
+               "format": result["format"],
+               "width": result["width"],
+               "height": result["height"]
+           }
 
-           return file_path
+       async def delete_image(self, public_id: str):
+           cloudinary.uploader.destroy(public_id)
 
-       async def delete_image(self, file_path: str):
-           if os.path.exists(file_path):
-               os.remove(file_path)
+       def get_image_url(self, public_id: str, transformations: dict = None):
+           return cloudinary.CloudinaryImage(public_id).build_url(transformation=transformations)
    ```
 
 2. **Create Image Router (`app/routers/images.py`):**
@@ -789,26 +804,35 @@
        if file.size > 10 * 1024 * 1024:  # 10MB limit
            raise HTTPException(status_code=400, detail="File too large")
 
-       # Upload image
-       file_key = await image_service.upload_image(file, property_id)
+       # Upload image to Cloudinary
+       upload_result = await image_service.upload_image(file, property_id)
 
        # Save to database
        image = PropertyImage(
            property_id=property_id,
-           file_key=file_path,
-           file_url=f"/static/{os.path.basename(file_path)}"
+           file_key=upload_result["public_id"],
+           file_url=upload_result["secure_url"]
        )
        db.add(image)
        await db.commit()
 
-       return {"message": "Image uploaded successfully", "file_path": file_path}
+       return {
+           "message": "Image uploaded successfully",
+           "public_id": upload_result["public_id"],
+           "url": upload_result["secure_url"]
+       }
 
-   @router.get("/media/{file_path}")
-   async def get_image(file_path: str):
-       # Serve local file
-       if os.path.exists(file_path):
-           return FileResponse(file_path)
-       raise HTTPException(status_code=404, detail="Image not found")
+   @router.get("/media/{public_id}")
+   async def get_image(public_id: str, width: int = None, height: int = None):
+       # Generate Cloudinary URL with optional transformations
+       transformations = {}
+       if width:
+           transformations["width"] = width
+       if height:
+           transformations["height"] = height
+
+       url = image_service.get_image_url(public_id, transformations)
+       return {"url": url}
 
    @router.delete("/properties/{property_id}/images/{image_id}")
    async def delete_property_image(
@@ -817,20 +841,32 @@
        current_user: User = Depends(require_permission("update:properties")),
        db: AsyncSession = Depends(get_db)
    ):
-       # Delete from S3 and database
-       pass
+       # Get image from database
+       image = await db.get(PropertyImage, image_id)
+       if not image or image.property_id != property_id:
+           raise HTTPException(status_code=404, detail="Image not found")
+
+       # Delete from Cloudinary
+       await image_service.delete_image(image.file_key)
+
+       # Delete from database
+       await db.delete(image)
+       await db.commit()
+
+       return {"message": "Image deleted successfully"}
    ```
 
 **Deliverables:**
 
-- PropertyImage model with file_key
-- Image upload service with S3 integration
-- Image management endpoints
+- PropertyImage model with public_id (Cloudinary public ID)
+- Image upload service with Cloudinary integration
+- Image management endpoints with transformations
 - File validation and size limits
+- Automatic image optimization and CDN delivery
 
 **Tests:**
 
-- Mock S3/storage in tests, test uploads, deletion, and DB references
+- Mock Cloudinary API in tests, test uploads, deletion, and DB references
 
 ## Phase 4 — Search, Filters, and Discovery
 
