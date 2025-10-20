@@ -3,7 +3,15 @@ from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Session
 from starlette import status
 from app.database import Base, SessionLocal, engine
-from app.routers import auth, admin, user
+
+from app.models.property import Property
+from app.models.property_images import PropertyImage
+
+# from .models.favorite import Favorite
+# from .models.property import Property
+# from .models.favorite import Favorite
+# from .models.favorite import Favorite
+from app.routers import auth, admin, user, properties, favorites, images
 
 app = FastAPI()
 
@@ -28,3 +36,6 @@ db_dependency = Annotated[Session, Depends(get_db)]
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(user.router)
+app.include_router(properties.router)
+app.include_router(favorites.router)
+app.include_router(images.router)
