@@ -28,3 +28,11 @@ def get_me(user: user_dependency, db: db_dependency):
     if not user:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     return db.query(User).filter(User.id == user.get("id")).first()
+
+
+@router.delete("/deactivate", status_code=status.HTTP_200_OK)
+def deactivate_user(db: db_dependency, user: user_dependency):
+    database_user: User = db.query(User).filter(User.id == user.get("id")).first()
+    database_user.is_active = False
+    db.commit()
+    db.refresh(database_user)

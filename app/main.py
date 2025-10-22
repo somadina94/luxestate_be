@@ -6,6 +6,7 @@ from app.database import Base, SessionLocal, engine
 
 from app.models.property import Property
 from app.models.property_images import PropertyImage
+from app.models.user import User
 
 # from .models.favorite import Favorite
 # from .models.property import Property
@@ -14,7 +15,6 @@ from app.models.property_images import PropertyImage
 from app.routers import auth, admin, user, properties, favorites, images
 
 app = FastAPI()
-
 Base.metadata.create_all(bind=engine)
 
 

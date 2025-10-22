@@ -61,7 +61,7 @@ def require_permission(required: Permission) -> Callable[..., dict]:
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_200_OK,
                 detail="Could not autheticate user",
             )
 
