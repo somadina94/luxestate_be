@@ -38,3 +38,5 @@ class User(Base):
     favorites = relationship(
         "Favorite", back_populates="user", cascade="all, delete-orphan"
     )
+    verification_code = Column(String, nullable=True)
+    verification_code_expires = Column(DateTime(timezone=True), nullable=True)

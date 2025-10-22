@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
 
+    EMAIL_HOST: str
+    EMAIL_PORT: str
+    EMAIL_USERNAME: str
+    EMAIL_PASSWORD: str
+    EMAIL_FROM: str
+
     class Config:
         env_file = ".env"
 
