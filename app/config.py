@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str
     EMAIL_FROM: str
 
+    EXPO_PUSH_URL: str
+    VAPID_PUBLIC_KEY: str
+    VAPID_PRIVATE_KEY: str
+    VAPID_CLAIMS: dict[str, str]
+
+    STRIPE_PUBLISHABLE_KEY: str
+    STRIPE_SECRET_KEY: str
+    STRIPE_SUCCESS_URL: str
+    STRIPE_CANCEL_URL: str
+    STRIPE_WEBHOOK_SECRET: str
+
     class Config:
         env_file = ".env"
 

@@ -4,8 +4,10 @@ from typing import Annotated, Callable
 from fastapi import Depends, HTTPException
 from starlette import status
 from sqlalchemy.orm import Session
+from app.services.subscription import SubscriptionService
 
 from app.database import SessionLocal
+from app.models.subscription import SubscriptionStatus
 from app.services.auth_service import get_current_user
 
 
@@ -28,6 +30,8 @@ class Permission(str, Enum):
     DELETE_PROPERTIES = "delete:properties"
     MANAGE_USERS = "manage:users"
     VIEW_ANALYTICS = "view:analytics"
+    MANAGE_TICKETS = "manage:tickets"
+    MANAGE_SUBSCRIPTIONS = "manage:subscriptions"
 
 
 # Map role strings (as embedded in JWT) to allowed permissions
@@ -46,6 +50,8 @@ ROLE_PERMISSIONS: dict[str, list[Permission]] = {
         Permission.DELETE_PROPERTIES,
         Permission.MANAGE_USERS,
         Permission.VIEW_ANALYTICS,
+        Permission.MANAGE_TICKETS,
+        Permission.MANAGE_SUBSCRIPTIONS,
     ],
 }
 
@@ -72,6 +78,21 @@ def require_permission(required: Permission) -> Callable[..., dict]:
                 detail="Insufficient permissions",
             )
 
+        return current_user
+
+    return dependency
+
+
+def require_subscription(required: SubscriptionStatus) -> Callable[..., dict]:
+    def dependency(db: db_dependency, current_user: CurrentUser) -> dict:
+        subscription = SubscriptionService(db).get_user_active_subscription(
+            current_user.get("id")
+        )
+        if not subscription or subscription.status != required:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
         return current_user
 
     return dependency
