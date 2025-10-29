@@ -1,0 +1,34 @@
+from datetime import datetime
+import enum
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+from app.database import Base
+
+
+class TicketStatus(str, enum.Enum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    CLOSED = "closed"
+
+
+class Ticket(Base):
+    __tablename__ = "tickets"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String)
+    status = Column(String, default="open")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    messages = relationship(
+        "TicketMessage", back_populates="ticket", cascade="all, delete-orphan"
+    )
+    user = relationship("User", back_populates="tickets")
+
+
+class TicketMessage(Base):
+    __tablename__ = "ticket_messages"
+    id = Column(Integer, primary_key=True)
+    ticket_id = Column(Integer, ForeignKey("tickets.id"))
+    sender_id = Column(Integer, ForeignKey("users.id"))
+    message = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    ticket = relationship("Ticket", back_populates="messages")

@@ -14,8 +14,14 @@ from app.schemas.property import (
     PropertySearchParams,
 )
 
-from app.dependencies import get_current_user, require_permission, Permission
+from app.dependencies import (
+    get_current_user,
+    require_permission,
+    Permission,
+    require_subscription,
+)
 from app.services.property_service import PropertyService
+from app.models.subscription import SubscriptionStatus
 
 router = APIRouter(prefix="/properties", tags=["properties"])
 
@@ -32,13 +38,16 @@ db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[
     dict, Depends(require_permission(Permission.CREATE_PROPERTIES))
 ]
+subscription_dependency = Annotated[
+    dict, Depends(require_subscription(SubscriptionStatus.PAID))
+]
 
 
 @router.post("/", response_model=PropertyResponse, status_code=status.HTTP_201_CREATED)
 async def create_property(
     db: db_dependency,
     property: PropertyCreate,
-    current_user: user_dependency,
+    current_user: subscription_dependency,
 ):
     return await PropertyService().create_property(
         db=db, property_data=property, agent_id=current_user.get("id")

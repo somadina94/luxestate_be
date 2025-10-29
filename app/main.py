@@ -4,15 +4,23 @@ from sqlalchemy.orm import Session
 from starlette import status
 from app.database import Base, SessionLocal, engine
 
-from app.models.property import Property
-from app.models.property_images import PropertyImage
-from app.models.user import User
 
-# from .models.favorite import Favorite
-# from .models.property import Property
-# from .models.favorite import Favorite
-# from .models.favorite import Favorite
-from app.routers import auth, admin, user, properties, favorites, images
+from app.routers import (
+    auth,
+    admin,
+    user,
+    properties,
+    favorites,
+    images,
+    websocket,
+    chat,
+    notifications,
+    push,
+    ticket,
+    seller_subscription,
+    stripe_checkout,
+    subscription,
+)
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -39,3 +47,11 @@ app.include_router(user.router)
 app.include_router(properties.router)
 app.include_router(favorites.router)
 app.include_router(images.router)
+app.include_router(websocket.router)
+app.include_router(chat.router)
+app.include_router(push.router)
+app.include_router(notifications.router)
+app.include_router(ticket.router)
+app.include_router(seller_subscription.router)
+app.include_router(stripe_checkout.router)
+app.include_router(subscription.router)
