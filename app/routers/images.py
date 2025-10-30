@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Form
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+    Form,
+    Request,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from typing import Annotated, List
@@ -9,6 +18,7 @@ from app.models.property_images import PropertyImage
 from app.schemas.favorite import FavoriteCreate, FavoriteResponse
 from app.schemas.image import ImageUpload
 from app.services.image_service import ImageService
+from app.services.audit_log_service import AuditLogService
 from app.dependencies import require_permission
 
 router = APIRouter(prefix="/property_images", tags=["property_images"])
@@ -31,6 +41,7 @@ async def upload_property_image(
     db: db_dependency,
     current_user: user_dependency,
     property_id: int,
+    http_req: Request,
     alt_text: str = Form(None),
     is_primary: bool = Form(False),
     order_index: int = Form(0),
@@ -55,6 +66,21 @@ async def upload_property_image(
     db.add(image)
     db.commit()
 
+    AuditLogService().create_log(
+        db=db,
+        action="property_image.upload",
+        resource_type="property_image",
+        resource_id=getattr(image, "id", None),
+        user_id=current_user.get("id"),
+        status="success",
+        status_code=status.HTTP_201_CREATED,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+
     return {
         "message": "Image uploaded successfully",
         "public_id": upload_result["public_id"],
@@ -74,6 +100,7 @@ async def delete_image(
     db: db_dependency,
     current_user: user_dependency,
     image_id: str,
+    http_req: Request,
 ):
     image = db.query(PropertyImage).filter(PropertyImage.id == image_id).first()
     if not image:
@@ -85,12 +112,31 @@ async def delete_image(
     db.delete(image)
     db.commit()
 
+    AuditLogService().create_log(
+        db=db,
+        action="property_image.delete",
+        resource_type="property_image",
+        resource_id=image_id,
+        user_id=current_user.get("id"),
+        status="success",
+        status_code=status.HTTP_204_NO_CONTENT,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+
     return {"detail": "Image deleted successfully"}
 
 
 @router.patch("/{image_id}", status_code=status.HTTP_200_OK)
 async def update_order_index(
-    db: db_dependency, user: user_dependency, image_id: int, order_index: int
+    db: db_dependency,
+    user: user_dependency,
+    image_id: int,
+    order_index: int,
+    http_req: Request,
 ):
     image = db.query(PropertyImage).filter(PropertyImage.id == image_id).first()
     if not image:
@@ -102,6 +148,22 @@ async def update_order_index(
     image.order_index = order_index
     db.commit()
     db.refresh(image)
+
+    AuditLogService().create_log(
+        db=db,
+        action="property_image.update",
+        resource_type="property_image",
+        resource_id=image_id,
+        user_id=user.get("id"),
+        changes={"order_index": {"old": image.order_index, "new": order_index}},
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
 
     return {
         "message": "Order index updated successfully",

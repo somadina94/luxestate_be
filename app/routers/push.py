@@ -1,10 +1,11 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pywebpush import json
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.services.auth_service import get_current_user
 from app.models.notification import UserPushToken
+from app.services.audit_log_service import AuditLogService
 
 router = APIRouter(prefix="/push", tags=["Push"])
 
@@ -19,7 +20,10 @@ def get_db():
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register_push_token(
-    payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)
+    payload: dict,
+    http_req: Request,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
 ):
     """
     payload example:
@@ -44,4 +48,17 @@ def register_push_token(
             u.web_push_subscription = json.dumps(web_sub)
         u.updated_at = datetime.utcnow()
     db.commit()
+    AuditLogService().create_log(
+        db=db,
+        action="push.register_token",
+        resource_type="notification",
+        resource_id=getattr(u, "id", None),
+        user_id=user["id"],
+        status="success",
+        status_code=status.HTTP_201_CREATED,
+        ip_address=request.headers.get("x-forwarded-for"),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
+    )
     return {"ok": True}
