@@ -36,7 +36,7 @@ admin_dependency = Annotated[
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_ticket(
-    db: db_dependency, user: user_dependency, request: TicketCreate, http_req: Request
+    db: db_dependency, user: user_dependency, request: TicketCreate, request_http: Request
 ):
     result = TicketService(db).create_ticket(request, user.get("id"))
     AuditLogService().create_log(
@@ -47,11 +47,11 @@ def create_ticket(
         user_id=user.get("id"),
         status="success",
         status_code=status.HTTP_201_CREATED,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request_http.headers.get("x-forwarded-for")
+        or (request_http.client.host if request_http.client else None),
+        user_agent=request_http.headers.get("user-agent"),
+        request_method=request_http.method,
+        request_path=request_http.url.path,
     )
     return result
 
@@ -60,7 +60,7 @@ def create_ticket(
 def get_all_tickets(
     db: db_dependency,
     user: admin_dependency,
-    http_req: Request,
+    request: Request,
 ):
     rows = TicketService(db).get_tickets_with_messages()
     AuditLogService().create_log(
@@ -71,11 +71,11 @@ def get_all_tickets(
         user_id=user.get("id"),
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return rows
 
@@ -85,7 +85,7 @@ def get_all_tickets(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_ticket(
-    db: db_dependency, user: admin_dependency, ticket_id: int, http_req: Request
+    db: db_dependency, user: admin_dependency, ticket_id: int, request: Request
 ):
     result = TicketService(db).delete_ticket(ticket_id)
     AuditLogService().create_log(
@@ -96,11 +96,11 @@ def delete_ticket(
         user_id=user.get("id"),
         status="success",
         status_code=status.HTTP_204_NO_CONTENT,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return result
 
@@ -110,7 +110,7 @@ def delete_ticket(
     response_model=List[TicketResponse],
     status_code=status.HTTP_200_OK,
 )
-def get_user_tickets(db: db_dependency, user: user_dependency, http_req: Request):
+def get_user_tickets(db: db_dependency, user: user_dependency, request: Request):
     rows = TicketService(db).get_user_tickets(user.get("id"))
     AuditLogService().create_log(
         db=db,
@@ -120,11 +120,11 @@ def get_user_tickets(db: db_dependency, user: user_dependency, http_req: Request
         user_id=user.get("id"),
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return rows
 
@@ -139,7 +139,7 @@ def post_message(
     user: user_dependency,
     message_request: MessageCreate,
     ticket_id: int,
-    http_req: Request,
+    request: Request,
 ):
     result = TicketService(db).add_message(
         ticket_id, user.get("id"), message_request.message
@@ -152,11 +152,11 @@ def post_message(
         user_id=user.get("id"),
         status="success",
         status_code=status.HTTP_201_CREATED,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return result
 
@@ -171,7 +171,7 @@ def post_message(
     user: admin_dependency,
     ticket_request: TicketUpdate,
     ticket_id: int,
-    http_req: Request,
+    request: Request,
 ):
     result = TicketService(db).update_ticket(
         ticket_id,
@@ -186,10 +186,10 @@ def post_message(
         changes=ticket_request.dict(exclude_unset=True),
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return result

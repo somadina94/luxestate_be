@@ -25,7 +25,7 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
 @router.get("/")
-def list_notifications(db: Session = Depends(get_db), user=Depends(get_current_user), http_req: Request = None):
+def list_notifications(db: Session = Depends(get_db), user=Depends(get_current_user), request: Request = None):
     rows = (
         db.query(Notification)
         .filter(Notification.user_id == user["id"])
@@ -40,10 +40,10 @@ def list_notifications(db: Session = Depends(get_db), user=Depends(get_current_u
         user_id=user["id"],
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for") if http_req else None,
-        user_agent=http_req.headers.get("user-agent") if http_req else None,
-        request_method=http_req.method if http_req else None,
-        request_path=http_req.url.path if http_req else None,
+        ip_address=request.headers.get("x-forwarded-for") if request else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+        request_method=request.method if request else None,
+        request_path=request.url.path if request else None,
     )
     return [
         {
@@ -58,7 +58,7 @@ def list_notifications(db: Session = Depends(get_db), user=Depends(get_current_u
 
 
 @router.patch("/read")
-def mark_read(ids: dict, db: Session = Depends(get_db), user=Depends(get_current_user), http_req: Request = None):
+def mark_read(ids: dict, db: Session = Depends(get_db), user=Depends(get_current_user), request: Request = None):
     ids_list = ids.get("ids", [])
     if not ids_list:
         return {"ok": False}
@@ -74,17 +74,17 @@ def mark_read(ids: dict, db: Session = Depends(get_db), user=Depends(get_current
         user_id=user["id"],
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for") if http_req else None,
-        user_agent=http_req.headers.get("user-agent") if http_req else None,
-        request_method=http_req.method if http_req else None,
-        request_path=http_req.url.path if http_req else None,
+        ip_address=request.headers.get("x-forwarded-for") if request else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+        request_method=request.method if request else None,
+        request_path=request.url.path if request else None,
     )
     return {"ok": True}
 
 
 @router.post("/webpush/subscribe", status_code=status.HTTP_201_CREATED)
 def subscribe_web_push(
-    request: WebPushSubscribe, db: db_dependency, user: user_dependency, http_req: Request
+    request: WebPushSubscribe, db: db_dependency, user: user_dependency, request_http: Request
 ):
     subscription_data = json.dumps(request.subscription)
 
@@ -111,9 +111,9 @@ def subscribe_web_push(
         user_id=user["id"],
         status="success",
         status_code=status.HTTP_201_CREATED,
-        ip_address=http_req.headers.get("x-forwarded-for"),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request_http.headers.get("x-forwarded-for"),
+        user_agent=request_http.headers.get("user-agent"),
+        request_method=request_http.method,
+        request_path=request_http.url.path,
     )
     return {"message": "Web push subscription saved"}

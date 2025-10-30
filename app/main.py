@@ -1,8 +1,13 @@
 from typing import Annotated
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from starlette import status
 from app.database import Base, SessionLocal, engine
+from app.Middleware.audit_middleware import audit_log_middleware
+from app.limits import limiter, RateLimitExceeded, SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded as _RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 
 from app.routers import (
@@ -23,6 +28,21 @@ from app.routers import (
 )
 
 app = FastAPI()
+app.middleware("http")(audit_log_middleware)
+
+# CORS (permissive for development; tighten in production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Rate limiting middleware and handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 Base.metadata.create_all(bind=engine)
 
 

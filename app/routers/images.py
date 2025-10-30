@@ -41,7 +41,7 @@ async def upload_property_image(
     db: db_dependency,
     current_user: user_dependency,
     property_id: int,
-    http_req: Request,
+    request: Request,
     alt_text: str = Form(None),
     is_primary: bool = Form(False),
     order_index: int = Form(0),
@@ -74,11 +74,11 @@ async def upload_property_image(
         user_id=current_user.get("id"),
         status="success",
         status_code=status.HTTP_201_CREATED,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
 
     return {
@@ -100,7 +100,7 @@ async def delete_image(
     db: db_dependency,
     current_user: user_dependency,
     image_id: str,
-    http_req: Request,
+    request: Request,
 ):
     image = db.query(PropertyImage).filter(PropertyImage.id == image_id).first()
     if not image:
@@ -120,11 +120,11 @@ async def delete_image(
         user_id=current_user.get("id"),
         status="success",
         status_code=status.HTTP_204_NO_CONTENT,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
 
     return {"detail": "Image deleted successfully"}
@@ -136,7 +136,7 @@ async def update_order_index(
     user: user_dependency,
     image_id: int,
     order_index: int,
-    http_req: Request,
+    request: Request,
 ):
     image = db.query(PropertyImage).filter(PropertyImage.id == image_id).first()
     if not image:
@@ -158,11 +158,11 @@ async def update_order_index(
         changes={"order_index": {"old": image.order_index, "new": order_index}},
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
 
     return {

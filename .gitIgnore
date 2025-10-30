@@ -4,6 +4,7 @@
 .env.local
 .env.production
 logplan.md
+remains.md
 # Python
 __pycache__/
 *.py[cod]
