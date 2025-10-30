@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from starlette import status
 from app.database import SessionLocal
@@ -14,6 +14,7 @@ from app.schemas.ticket import (
     TicketResponse,
     TicketUpdate,
 )
+from app.services.audit_log_service import AuditLogService
 
 router = APIRouter(prefix="/ticket", tags=["ticket"])
 
@@ -34,24 +35,74 @@ admin_dependency = Annotated[
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_ticket(db: db_dependency, user: user_dependency, request: TicketCreate):
-    return TicketService(db).create_ticket(request, user.get("id"))
+def create_ticket(
+    db: db_dependency, user: user_dependency, request: TicketCreate, http_req: Request
+):
+    result = TicketService(db).create_ticket(request, user.get("id"))
+    AuditLogService().create_log(
+        db=db,
+        action="ticket.create",
+        resource_type="ticket",
+        resource_id=getattr(result, "id", None),
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_201_CREATED,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return result
 
 
 @router.get("/", response_model=List[TicketResponse], status_code=status.HTTP_200_OK)
 def get_all_tickets(
     db: db_dependency,
     user: admin_dependency,
+    http_req: Request,
 ):
-    return TicketService(db).get_tickets_with_messages()
+    rows = TicketService(db).get_tickets_with_messages()
+    AuditLogService().create_log(
+        db=db,
+        action="ticket.list_all",
+        resource_type="ticket",
+        resource_id=None,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return rows
 
 
 @router.delete(
     "/{ticket_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def delete_ticket(db: db_dependency, user: admin_dependency, ticket_id: int):
-    return TicketService(db).delete_ticket(ticket_id)
+def delete_ticket(
+    db: db_dependency, user: admin_dependency, ticket_id: int, http_req: Request
+):
+    result = TicketService(db).delete_ticket(ticket_id)
+    AuditLogService().create_log(
+        db=db,
+        action="ticket.delete",
+        resource_type="ticket",
+        resource_id=ticket_id,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_204_NO_CONTENT,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return result
 
 
 @router.get(
@@ -59,8 +110,23 @@ def delete_ticket(db: db_dependency, user: admin_dependency, ticket_id: int):
     response_model=List[TicketResponse],
     status_code=status.HTTP_200_OK,
 )
-def get_user_tickets(db: db_dependency, user: user_dependency):
-    return TicketService(db).get_user_tickets(user.get("id"))
+def get_user_tickets(db: db_dependency, user: user_dependency, http_req: Request):
+    rows = TicketService(db).get_user_tickets(user.get("id"))
+    AuditLogService().create_log(
+        db=db,
+        action="ticket.list_user",
+        resource_type="ticket",
+        resource_id=None,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return rows
 
 
 @router.post(
@@ -73,10 +139,26 @@ def post_message(
     user: user_dependency,
     message_request: MessageCreate,
     ticket_id: int,
+    http_req: Request,
 ):
-    return TicketService(db).add_message(
+    result = TicketService(db).add_message(
         ticket_id, user.get("id"), message_request.message
     )
+    AuditLogService().create_log(
+        db=db,
+        action="ticket.message_added",
+        resource_type="ticket",
+        resource_id=ticket_id,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_201_CREATED,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return result
 
 
 @router.patch(
@@ -89,8 +171,25 @@ def post_message(
     user: admin_dependency,
     ticket_request: TicketUpdate,
     ticket_id: int,
+    http_req: Request,
 ):
-    return TicketService(db).update_ticket(
+    result = TicketService(db).update_ticket(
         ticket_id,
         ticket_request,
     )
+    AuditLogService().create_log(
+        db=db,
+        action="ticket.update",
+        resource_type="ticket",
+        resource_id=ticket_id,
+        user_id=user.get("id"),
+        changes=ticket_request.dict(exclude_unset=True),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return result

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Annotated, List, Optional
 
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from app.dependencies import (
 )
 from app.services.property_service import PropertyService
 from app.models.subscription import SubscriptionStatus
+from app.services.audit_log_service import AuditLogService
 
 router = APIRouter(prefix="/properties", tags=["properties"])
 
@@ -48,10 +49,26 @@ async def create_property(
     db: db_dependency,
     property: PropertyCreate,
     current_user: subscription_dependency,
+    http_req: Request,
 ):
-    return await PropertyService().create_property(
+    result = await PropertyService().create_property(
         db=db, property_data=property, agent_id=current_user.get("id")
     )
+    AuditLogService().create_log(
+        db=db,
+        action="property.create",
+        resource_type="property",
+        resource_id=getattr(result, "id", None),
+        user_id=current_user.get("id"),
+        status="success",
+        status_code=status.HTTP_201_CREATED,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return result
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
@@ -245,13 +262,50 @@ async def get_property(db: db_dependency, property_id: int):
 
 @router.patch("/{property_id}", status_code=status.HTTP_200_OK)
 async def update_property(
-    db: db_dependency, property: PropertyUpdate, user: user_dependency, property_id: int
+    db: db_dependency,
+    property: PropertyUpdate,
+    user: user_dependency,
+    property_id: int,
+    http_req: Request,
 ):
-    return await PropertyService().update_property(
+    result = await PropertyService().update_property(
         db, property_id, property, user.get("id")
     )
+    AuditLogService().create_log(
+        db=db,
+        action="property.update",
+        resource_type="property",
+        resource_id=property_id,
+        user_id=user.get("id"),
+        changes=property.dict(exclude_unset=True),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return result
 
 
 @router.delete("/{property_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_property(db: db_dependency, user: user_dependency, property_id: int):
-    return await PropertyService().delete_property(db, property_id, user.get("id"))
+async def delete_property(
+    db: db_dependency, user: user_dependency, property_id: int, http_req: Request
+):
+    result = await PropertyService().delete_property(db, property_id, user.get("id"))
+    AuditLogService().create_log(
+        db=db,
+        action="property.delete",
+        resource_type="property",
+        resource_id=property_id,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_204_NO_CONTENT,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return result

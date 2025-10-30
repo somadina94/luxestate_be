@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from typing import Annotated
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
 from app.services.auth_service import get_current_user
 from app.services.subscription import SubscriptionService
 from app.dependencies import require_permission, Permission
+from app.services.audit_log_service import AuditLogService
 
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
@@ -29,8 +30,24 @@ admin_dependency = Annotated[
 def get_subscriptions(
     db: db_dependency,
     admin: admin_dependency,
+    http_req: Request,
 ):
-    return SubscriptionService(db).get_subscriptions()
+    rows = SubscriptionService(db).get_subscriptions()
+    AuditLogService().create_log(
+        db=db,
+        action="subscription.list_all",
+        resource_type="subscription",
+        resource_id=None,
+        user_id=admin.get("id"),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return rows
 
 
 @router.get(
@@ -41,8 +58,24 @@ def get_subscriptions(
 def get_user_subscriptions(
     db: db_dependency,
     user: user_dependency,
+    http_req: Request,
 ):
-    return SubscriptionService(db).get_user_subscriptions(user.get("id"))
+    rows = SubscriptionService(db).get_user_subscriptions(user.get("id"))
+    AuditLogService().create_log(
+        db=db,
+        action="subscription.list_user",
+        resource_type="subscription",
+        resource_id=None,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return rows
 
 
 @router.get(
@@ -53,5 +86,21 @@ def get_user_subscriptions(
 def get_user_active_subscription(
     db: db_dependency,
     user: user_dependency,
+    http_req: Request,
 ):
-    return SubscriptionService(db).get_user_active_subscription(user.get("id"))
+    row = SubscriptionService(db).get_user_active_subscription(user.get("id"))
+    AuditLogService().create_log(
+        db=db,
+        action="subscription.user_active",
+        resource_type="subscription",
+        resource_id=getattr(row, "id", None) if row else None,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return row

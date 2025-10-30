@@ -5,9 +5,9 @@ from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.chat import Message, Conversation
-from app.models.notification import UserPushToken  # optional usage
 from app.services.auth_service import get_current_user
 from app.services.notifications import dispatch_notification
+from app.services.audit_log_service import AuditLogService
 from datetime import datetime
 
 
@@ -100,12 +100,33 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=4401)
+        # Log unauthorized connect attempt
+        AuditLogService().create_log(
+            db=db,
+            action="chat.ws_connect",
+            resource_type="chat",
+            resource_id=conversation_id,
+            user_id=None,
+            status="failure",
+            status_code=4401,
+            error_message="missing_token",
+        )
         return
 
     try:
         user = await get_current_user(token)  # returns dict with id,email,role
     except Exception:
         await websocket.close(code=4401)
+        AuditLogService().create_log(
+            db=db,
+            action="chat.ws_connect",
+            resource_type="chat",
+            resource_id=conversation_id,
+            user_id=None,
+            status="failure",
+            status_code=4401,
+            error_message="invalid_token",
+        )
         return
 
     # --- verify conversation ---
@@ -114,6 +135,16 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
     )
     if not conversation:
         await websocket.close(code=4404)
+        AuditLogService().create_log(
+            db=db,
+            action="chat.ws_connect",
+            resource_type="chat",
+            resource_id=conversation_id,
+            user_id=user.get("id") if isinstance(user, dict) else None,
+            status="failure",
+            status_code=4404,
+            error_message="conversation_not_found",
+        )
         return
 
     if user["id"] not in [
@@ -122,11 +153,30 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
         conversation.admin_id,
     ]:
         await websocket.close(code=4403)
+        AuditLogService().create_log(
+            db=db,
+            action="chat.ws_connect",
+            resource_type="chat",
+            resource_id=conversation_id,
+            user_id=user["id"],
+            status="failure",
+            status_code=4403,
+            error_message="forbidden",
+        )
         return
 
     # connect
     await manager.connect(
         user_id=user["id"], conversation_id=conversation_id, websocket=websocket
+    )
+    AuditLogService().create_log(
+        db=db,
+        action="chat.ws_connect",
+        resource_type="chat",
+        resource_id=conversation_id,
+        user_id=user["id"],
+        status="success",
+        status_code=101,
     )
 
     try:
@@ -154,6 +204,17 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
                 db.add(message)
                 db.commit()
                 db.refresh(message)
+
+                # Log message metadata (no content)
+                AuditLogService().create_log(
+                    db=db,
+                    action="chat.message_sent",
+                    resource_type="chat",
+                    resource_id=conversation_id,
+                    user_id=user["id"],
+                    status="success",
+                    status_code=200,
+                )
 
                 # build event
                 event = {
@@ -218,6 +279,15 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
                         {"is_read": True}, synchronize_session=False
                     )
                     db.commit()
+                    AuditLogService().create_log(
+                        db=db,
+                        action="chat.read_receipt",
+                        resource_type="chat",
+                        resource_id=conversation_id,
+                        user_id=user["id"],
+                        status="success",
+                        status_code=200,
+                    )
                     # notify sender(s) that messages were read
                     read_event = {
                         "type": "read_receipt",
@@ -233,4 +303,13 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
     except WebSocketDisconnect:
         manager.disconnect(
             user_id=user["id"], conversation_id=conversation_id, websocket=websocket
+        )
+        AuditLogService().create_log(
+            db=db,
+            action="chat.ws_disconnect",
+            resource_type="chat",
+            resource_id=conversation_id,
+            user_id=user["id"],
+            status="success",
+            status_code=1000,
         )
