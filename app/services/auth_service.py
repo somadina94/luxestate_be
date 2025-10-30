@@ -8,8 +8,8 @@ from app.config import settings
 from app.models.user import User
 from fastapi.security import OAuth2PasswordBearer
 
-SECRET_KEY = "secret_key"
-ALGORITHM = "HS256"
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")

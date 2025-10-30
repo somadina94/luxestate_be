@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
 
+    SECRET_KEY: str
+    ALGORITHM: str
+
     EMAIL_HOST: str
     EMAIL_PORT: str
     EMAIL_USERNAME: str

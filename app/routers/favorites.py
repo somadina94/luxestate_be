@@ -32,7 +32,7 @@ def add_favorite(
     property_id: int,
     db: db_dependency,
     current_user: user_dependency,
-    http_req: Request,
+    request: Request,
 ):
     # Validate property exists
     prop = db.query(Property).filter(Property.id == property_id).first()
@@ -63,11 +63,11 @@ def add_favorite(
         user_id=current_user["id"],
         status="success",
         status_code=status.HTTP_201_CREATED,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
 
     return fav
@@ -78,7 +78,7 @@ def remove_favorite(
     property_id: int,
     db: db_dependency,
     current_user: user_dependency,
-    http_req: Request,
+    request: Request,
 ):
     fav = (
         db.query(Favorite)
@@ -97,11 +97,11 @@ def remove_favorite(
             user_id=current_user["id"],
             status="success",
             status_code=status.HTTP_204_NO_CONTENT,
-            ip_address=http_req.headers.get("x-forwarded-for")
-            or (http_req.client.host if http_req.client else None),
-            user_agent=http_req.headers.get("user-agent"),
-            request_method=http_req.method,
-            request_path=http_req.url.path,
+            ip_address=request.headers.get("x-forwarded-for")
+            or (request.client.host if request.client else None),
+            user_agent=request.headers.get("user-agent"),
+            request_method=request.method,
+            request_path=request.url.path,
         )
         return
     db.delete(fav)
@@ -115,17 +115,17 @@ def remove_favorite(
         user_id=current_user["id"],
         status="success",
         status_code=status.HTTP_204_NO_CONTENT,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
 
 
 @router.get("/me", response_model=List[FavoriteResponse])
 def list_my_favorites(
-    db: db_dependency, current_user: user_dependency, http_req: Request
+    db: db_dependency, current_user: user_dependency, request: Request
 ):
     rows = db.query(Favorite).filter(Favorite.user_id == current_user["id"]).all()
     # Low-priority read log
@@ -137,10 +137,10 @@ def list_my_favorites(
         user_id=current_user["id"],
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return rows

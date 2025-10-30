@@ -49,7 +49,7 @@ async def create_property(
     db: db_dependency,
     property: PropertyCreate,
     current_user: subscription_dependency,
-    http_req: Request,
+    request: Request,
 ):
     result = await PropertyService().create_property(
         db=db, property_data=property, agent_id=current_user.get("id")
@@ -62,11 +62,11 @@ async def create_property(
         user_id=current_user.get("id"),
         status="success",
         status_code=status.HTTP_201_CREATED,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return result
 
@@ -266,7 +266,7 @@ async def update_property(
     property: PropertyUpdate,
     user: user_dependency,
     property_id: int,
-    http_req: Request,
+    request: Request,
 ):
     result = await PropertyService().update_property(
         db, property_id, property, user.get("id")
@@ -280,18 +280,18 @@ async def update_property(
         changes=property.dict(exclude_unset=True),
         status="success",
         status_code=status.HTTP_200_OK,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return result
 
 
 @router.delete("/{property_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_property(
-    db: db_dependency, user: user_dependency, property_id: int, http_req: Request
+    db: db_dependency, user: user_dependency, property_id: int, request: Request
 ):
     result = await PropertyService().delete_property(db, property_id, user.get("id"))
     AuditLogService().create_log(
@@ -302,10 +302,10 @@ async def delete_property(
         user_id=user.get("id"),
         status="success",
         status_code=status.HTTP_204_NO_CONTENT,
-        ip_address=http_req.headers.get("x-forwarded-for")
-        or (http_req.client.host if http_req.client else None),
-        user_agent=http_req.headers.get("user-agent"),
-        request_method=http_req.method,
-        request_path=http_req.url.path,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
     )
     return result
