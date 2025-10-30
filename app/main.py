@@ -25,6 +25,7 @@ from app.routers import (
     seller_subscription,
     stripe_checkout,
     subscription,
+    announcements,
 )
 
 app = FastAPI()
@@ -75,3 +76,4 @@ app.include_router(ticket.router)
 app.include_router(seller_subscription.router)
 app.include_router(stripe_checkout.router)
 app.include_router(subscription.router)
+app.include_router(announcements.router)

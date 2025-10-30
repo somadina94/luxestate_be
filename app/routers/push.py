@@ -56,9 +56,9 @@ def register_push_token(
         user_id=user["id"],
         status="success",
         status_code=status.HTTP_201_CREATED,
-        ip_address=request.headers.get("x-forwarded-for"),
-        user_agent=request.headers.get("user-agent"),
-        request_method=request.method,
-        request_path=request.url.path,
+        ip_address=http_req.headers.get("x-forwarded-for"),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
     )
     return {"ok": True}

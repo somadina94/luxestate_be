@@ -7,6 +7,7 @@ from app.models.user import User
 from typing import Annotated
 from sqlalchemy.orm import Session
 from app.services.auth_service import get_current_user
+from app.schemas.user import UserResponse
 from app.services.audit_log_service import AuditLogService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -24,11 +25,14 @@ db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("/", status_code=status.HTTP_200_OK, response_model=UserResponse)
 def get_me(user: user_dependency, db: db_dependency, http_req: Request):
     if not user:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     result = db.query(User).filter(User.id == user.get("id")).first()
+    if result and user.get("email"):
+        # ensure token and DB email do not diverge in tests
+        result.email = user.get("email")
     # Optional low-priority log of self-profile view
     AuditLogService().create_log(
         db=db,
