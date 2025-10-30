@@ -5,6 +5,7 @@ import enum
 
 
 class SubscriptionPlanDurationType(str, enum.Enum):
+    DAY = "day"
     MONTH = "month"
     YEAR = "year"
 

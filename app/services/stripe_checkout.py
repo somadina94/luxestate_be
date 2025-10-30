@@ -101,7 +101,7 @@ class StripeCheckoutService:
             subscription = Subscription(
                 user_id=user.id,
                 subscription_plan_id=session["metadata"].get("subscription_plan_id"),
-                status=SubscriptionStatus.PAID,
+                status=SubscriptionStatus.PAID.value,
                 start_date=datetime.now(),
                 end_date=datetime.now() + timedelta(days=subscription_plan.duration),
             )

@@ -26,6 +26,13 @@ class Subscription(Base):
     subscription_plan_id = Column(Integer, ForeignKey("subscription_plans.id"))
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
-    status = Column(String, nullable=False)
+    status = Column(
+        SqlEnum(
+            SubscriptionStatus,
+            values_callable=lambda obj: [e.value for e in obj],
+            native_enum=False,
+        ),
+        nullable=False,
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

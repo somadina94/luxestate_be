@@ -55,7 +55,7 @@ class SubscriptionService:
             self.db.query(Subscription)
             .filter(
                 Subscription.user_id == user_id,
-                Subscription.status == SubscriptionStatus.PAID,
+                Subscription.status == SubscriptionStatus.PAID.value,
             )
             .order_by(Subscription.end_date.desc())
             .first()

@@ -30,7 +30,7 @@ admin_dependency = Annotated[
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=SubscriptionPlanResponse)
 def create_subscription_plan(
     db: db_dependency, admin: admin_dependency, request: SubscriptionPlanCreate, http_req: Request
 ):

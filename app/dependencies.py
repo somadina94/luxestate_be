@@ -32,6 +32,7 @@ class Permission(str, Enum):
     VIEW_ANALYTICS = "view:analytics"
     MANAGE_TICKETS = "manage:tickets"
     MANAGE_SUBSCRIPTIONS = "manage:subscriptions"
+    MANAGE_ANNOUNCEMENTS = "manage:announcements"
 
 
 # Map role strings (as embedded in JWT) to allowed permissions
@@ -52,6 +53,7 @@ ROLE_PERMISSIONS: dict[str, list[Permission]] = {
         Permission.VIEW_ANALYTICS,
         Permission.MANAGE_TICKETS,
         Permission.MANAGE_SUBSCRIPTIONS,
+        Permission.MANAGE_ANNOUNCEMENTS,
     ],
 }
 
@@ -67,8 +69,8 @@ def require_permission(required: Permission) -> Callable[..., dict]:
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
-                status_code=status.HTTP_200_OK,
-                detail="Could not autheticate user",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not authenticate user",
             )
 
         allowed = ROLE_PERMISSIONS.get(role, [])
