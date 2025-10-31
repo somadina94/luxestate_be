@@ -183,7 +183,7 @@ def post_message(
         resource_type="ticket",
         resource_id=ticket_id,
         user_id=user.get("id"),
-        changes=ticket_request.dict(exclude_unset=True),
+        changes=ticket_request.model_dump(exclude_unset=True),
         status="success",
         status_code=status.HTTP_200_OK,
         ip_address=request.headers.get("x-forwarded-for")

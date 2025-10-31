@@ -1,7 +1,12 @@
 from sqlalchemy import Boolean, Column, Integer, ForeignKey, String, DateTime, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
+
+
+def utc_now():
+    """Return current UTC timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 
 class Conversation(Base):
@@ -22,6 +27,6 @@ class Message(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"))
     sender_id = Column(Integer, ForeignKey("users.id"))
     content = Column(Text)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=utc_now)
     is_read = Column(Boolean, default=False)
     conversation = relationship("Conversation", back_populates="messages")

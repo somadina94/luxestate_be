@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytest
 from app.services.auth_service import create_access_token
 from app.models.user import User, UserRole
@@ -13,7 +13,7 @@ def _seed_user(db, role=UserRole.SELLER, email="u@example.com"):
         role=role,
         is_active=True,
         is_verified=True,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(u)
     db.commit()
@@ -39,7 +39,7 @@ def test_require_permission_returns_401_on_missing_role(client, db_session, monk
         "title": "Hello",
         "content": "World",
         "link": None,
-        "expires_at": datetime.utcnow().isoformat(),
+        "expires_at": datetime.now(timezone.utc).isoformat(),
     }
 
     # Inject dependency wrapper that uses our fake current user

@@ -1,7 +1,12 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base  # adapt import
+
+
+def utc_now():
+    """Return current UTC timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 
 class UserPushToken(Base):
@@ -10,7 +15,7 @@ class UserPushToken(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     expo_token = Column(String, nullable=True)  # ExponentPushToken[...] (mobile)
     web_push_subscription = Column(Text, nullable=True)  # JSON string of subscription
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=utc_now)
 
 
 class Notification(Base):
@@ -21,4 +26,4 @@ class Notification(Base):
     body = Column(Text)
     payload = Column(Text, nullable=True)  # JSON payload string
     is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)

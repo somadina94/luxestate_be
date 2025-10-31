@@ -13,7 +13,7 @@ class PropertyService:
         self, db: Session, property_data: PropertyCreate, agent_id: int
     ):
         # Create a new property instance
-        new_property = Property(**property_data.dict(), agent_id=agent_id)
+        new_property = Property(**property_data.model_dump(), agent_id=agent_id)
 
         db.add(new_property)
         db.commit()
@@ -61,7 +61,7 @@ class PropertyService:
             )
 
         # Update fields selectively
-        update_data = property_data.dict(exclude_unset=True)
+        update_data = property_data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(property, key, value)
 

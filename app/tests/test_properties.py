@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.services.auth_service import create_access_token
 from app.models.user import User, UserRole
 from app.models.seller_subscription_plan import (
@@ -18,7 +18,7 @@ def _seed_seller_with_subscription(db):
         role=UserRole.SELLER,
         is_active=True,
         is_verified=True,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
@@ -37,8 +37,8 @@ def _seed_seller_with_subscription(db):
     sub = Subscription(
         user_id=user.id,
         subscription_plan_id=plan.id,
-        start_date=datetime.utcnow(),
-        end_date=datetime.utcnow() + timedelta(days=30),
+        start_date=datetime.now(timezone.utc),
+        end_date=datetime.now(timezone.utc) + timedelta(days=30),
         status=SubscriptionStatus.PAID.value,
     )
     db.add(sub)

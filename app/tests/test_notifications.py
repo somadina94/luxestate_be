@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from app.services.auth_service import create_access_token
 from app.models.user import User, UserRole
@@ -14,7 +14,7 @@ def _seed_user(db):
         role=UserRole.BUYER,
         is_active=True,
         is_verified=True,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()

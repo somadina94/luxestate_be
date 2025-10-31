@@ -49,7 +49,7 @@ def create_conversation(
             request_path=http_req.url.path,
         )
         return existing_convo
-    convo = Conversation(**request.dict())
+    convo = Conversation(**request.model_dump())
     db.add(convo)
     db.commit()
     db.refresh(convo)

@@ -277,7 +277,7 @@ async def update_property(
         resource_type="property",
         resource_id=property_id,
         user_id=user.get("id"),
-        changes=property.dict(exclude_unset=True),
+        changes=property.model_dump(exclude_unset=True),
         status="success",
         status_code=status.HTTP_200_OK,
         ip_address=request.headers.get("x-forwarded-for")

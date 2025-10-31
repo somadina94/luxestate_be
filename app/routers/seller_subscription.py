@@ -121,7 +121,7 @@ def update_subscription_plan(
         resource_type="subscription_plan",
         resource_id=subscription_plan_id,
         user_id=user.get("id"),
-        changes=request.dict(exclude_unset=True),
+        changes=request.model_dump(exclude_unset=True),
         status="success",
         status_code=status.HTTP_200_OK,
         ip_address=http_req.headers.get("x-forwarded-for")

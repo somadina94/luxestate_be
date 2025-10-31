@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -124,7 +124,7 @@ async def login_for_access_token(
     hashed_code = hashlib.sha256(code.encode()).hexdigest()
     database_user = db.query(User).filter(User.id == user.id).first()
     database_user.verification_code = hashed_code
-    database_user.verification_code_expires = datetime.utcnow() + timedelta(minutes=10)
+    database_user.verification_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     db.commit()
     db.refresh(database_user)
     token = create_access_token(
@@ -222,7 +222,7 @@ async def forgot_password(db: db_dependency, email: str, request: Request):
     await send_verification_email(user.email, code)
     hashed_code = hashlib.sha256(code.encode()).hexdigest()
     user.verification_code = hashed_code
-    user.verification_code_expires = datetime.utcnow() + timedelta(minutes=10)
+    user.verification_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     db.commit()
     db.refresh(user)
     AuditLogService().create_log(

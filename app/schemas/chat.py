@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ConversationCreate(BaseModel):
@@ -12,5 +12,4 @@ class ConversationCreate(BaseModel):
 class ConversationResponse(ConversationCreate):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

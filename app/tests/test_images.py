@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from fastapi import UploadFile
 from app.services.auth_service import create_access_token
@@ -17,7 +17,7 @@ def _seed_seller_and_property(db):
         role=UserRole.SELLER,
         is_active=True,
         is_verified=True,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
