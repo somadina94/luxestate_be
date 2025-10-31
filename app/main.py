@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from starlette import status
 from app.database import Base, SessionLocal, engine
+from app.config import settings
 from app.Middleware.audit_middleware import audit_log_middleware
 from app.limits import limiter, RateLimitExceeded, SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded as _RateLimitExceeded
@@ -44,7 +45,10 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
-Base.metadata.create_all(bind=engine)
+# Note: In production, disable this and use Alembic migrations instead
+# Only create tables if using SQLite (for local dev), not for PostgreSQL/Supabase
+if settings.DATABASE_URL.startswith("sqlite"):
+    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/healthy", status_code=status.HTTP_200_OK)

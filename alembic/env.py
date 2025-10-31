@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -6,10 +7,17 @@ from sqlalchemy import pool
 from alembic import context
 from app.database import Base
 from app import models
+from app.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Override sqlalchemy.url from environment variable or settings
+# This allows us to use DATABASE_URL from .env file instead of alembic.ini
+database_url = os.getenv("DATABASE_URL") or settings.DATABASE_URL
+if database_url and database_url != "sqlite:///./luxestate.db":
+    config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

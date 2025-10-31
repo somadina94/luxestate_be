@@ -16,7 +16,7 @@ class StripeCheckoutService:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_checkout_session(self, user: User, request: StripeCheckoutCreate):
+    def create_checkout_session(self, user: dict, request: StripeCheckoutCreate):
         subscription_plan = (
             self.db.query(SubscriptionPlan)
             .filter(SubscriptionPlan.id == request.subscription_plan_id)

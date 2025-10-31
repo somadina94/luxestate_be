@@ -1,0 +1,58 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: luxestate_api
+    ports:
+      - "3002:3002"
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - luxestate_network
+    command: sh -c "sleep 5 && uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload"
+
+  # Optional: Local PostgreSQL for development (comment out if using Supabase)
+  # Uncomment below if you want to use local PostgreSQL instead of Supabase
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: luxestate_db
+  #   environment:
+  #     - POSTGRES_USER=luxestate
+  #     - POSTGRES_PASSWORD=luxestate_pass
+  #     - POSTGRES_DB=luxestate_db
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U luxestate"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: unless-stopped
+  #   networks:
+  #     - luxestate_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: luxestate_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - luxestate_network
+
+volumes:
+  postgres_data:
+
+networks:
+  luxestate_network:
+    driver: bridge
