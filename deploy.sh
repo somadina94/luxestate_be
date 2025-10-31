@@ -51,41 +51,74 @@ if [ ! -f .env ]; then
 fi
 
 # Load .env file for migrations (Python-based parser to handle special chars)
-echo -e "${YELLOW}Loading environment variables...${NC}"
-eval "$(python3 <<'PYTHON_SCRIPT'
+echo -e "${YELLOW}Loading environment variables from ${APP_DIR}/.env...${NC}"
+ENV_FILE="${APP_DIR}/.env"
+if [ ! -f "$ENV_FILE" ]; then
+  echo -e "${RED}.env file not found at $ENV_FILE${NC}"
+  exit 1
+fi
+
+# Use Python to parse and export env vars
+export $(python3 <<PYTHON_SCRIPT
 import os
 import re
+import sys
 
 def load_env_file(filename):
     """Safely load .env file and export variables"""
+    exports = []
     with open(filename, 'r') as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
+            # Handle KEY=VALUE or KEY: VALUE format
             match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)[:=]\s*(.+)$', line)
             if match:
                 key, value = match.groups()
                 value = value.strip().strip('"').strip("'")
-                print(f'export {key}={repr(value)}')
+                # Escape for shell
+                value = value.replace("'", "'\\''")
+                exports.append(f"{key}='{value}'")
             elif '=' in line and not line.startswith('='):
                 key, value = line.split('=', 1)
                 value = value.strip().strip('"').strip("'")
-                print(f'export {key}={repr(value)}')
+                value = value.replace("'", "'\\''")
+                exports.append(f"{key}='{value}'")
+    return exports
 
-load_env_file('.env')
+try:
+    exports = load_env_file('$ENV_FILE')
+    print(' '.join(exports))
+except Exception as e:
+    sys.stderr.write(f"Error loading .env: {e}\n")
+    sys.exit(1)
 PYTHON_SCRIPT
-)"
+) 2>/dev/null
 
 # Verify critical env is loaded
 if [ -z "${DATABASE_URL:-}" ]; then
-  echo -e "${RED}DATABASE_URL is not set after loading .env. Aborting migrations.${NC}"
+  echo -e "${RED}DATABASE_URL is not set after loading .env.${NC}"
+  echo -e "${YELLOW}Trying to load from .env directly...${NC}"
+  # Fallback: direct source attempt (might fail if .env has special chars)
+  [ -f .env ] && source <(grep -v '^#' .env | grep '=' | sed "s/:/=/g")
+fi
+
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo -e "${RED}DATABASE_URL still not set. Please check your .env file.${NC}"
   exit 1
 fi
-echo -e "${GREEN}DATABASE_URL loaded.${NC}"
+
+echo -e "${GREEN}DATABASE_URL loaded successfully${NC}"
 
 echo -e "${YELLOW}Running database migrations...${NC}"
-alembic upgrade head || echo -e "${RED}Migration failed, continuing...${NC}"
+# Ensure DATABASE_URL is available to alembic
+export DATABASE_URL
+alembic upgrade head || {
+  echo -e "${RED}Migration failed. Error details:${NC}"
+  alembic upgrade head 2>&1 | head -20
+  echo -e "${YELLOW}Continuing despite migration failure...${NC}"
+}
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 if [ $(id -u) -ne 0 ]; then
