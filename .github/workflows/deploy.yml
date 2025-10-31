@@ -28,8 +28,9 @@ jobs:
       - name: Run tests
         env:
           TESTING: "true"
-          DATABASE_URL: "sqlite:///:memory:"
+          DATABASE_URL: "sqlite:///./test.db"
         run: |
+          rm -f test.db
           pytest app/tests/ -v --tb=short
 
   deploy:
