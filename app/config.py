@@ -14,9 +14,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Cloudinary
-    CLOUDINARY_CLOUD_NAME: str = ""
-    CLOUDINARY_API_KEY: str = ""
-    CLOUDINARY_API_SECRET: str = ""
+    CLOUDINARY_CLOUD_NAME: str = "test-cloudinary"
+    CLOUDINARY_API_KEY: str = "test-cloudinary-api-key"
+    CLOUDINARY_API_SECRET: str = "test-cloudinary-api-secret"
 
     EMAIL_HOST: str = "localhost"
     EMAIL_PORT: str = "25"
