@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: luxestate_api
     ports:
-      - "3002:3002"
+      - "3003:3002"
     env_file:
       - /etc/luxestate.env
     restart: unless-stopped

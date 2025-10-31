@@ -40,10 +40,8 @@ if [ -d .git ]; then
     echo -e "${YELLOW}Could not detect default branch, resetting to origin/HEAD...${NC}"
     git reset --hard origin/HEAD 2>/dev/null || git reset --hard HEAD
   fi
-  # Removed aggressive clean to avoid deleting untracked files like .env
 else
   echo -e "${YELLOW}Cloning repository...${NC}"
-  # Replace with your repo URL if needed
   git clone "https://github.com/somadina94/luxestate_be.git" .
 fi
 
@@ -62,100 +60,23 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Load .env file for migrations (Python-based parser to handle special chars)
+# Load .env (requires KEY=VALUE with proper quoting)
 echo -e "${YELLOW}Loading environment variables from ${APP_DIR}/.env...${NC}"
-ENV_FILE="${APP_DIR}/.env"
-if [ ! -f "$ENV_FILE" ]; then
-  echo -e "${RED}.env file not found at $ENV_FILE${NC}"
-  exit 1
-fi
-
-# Use Python to parse and write a temporary exports file, then source it
-TEMP_EXPORTS="/tmp/luxestate_exports_$$.sh"
-if ! python3 <<'PYTHON_SCRIPT' "${ENV_FILE}" "${TEMP_EXPORTS}" 2>&1; then
-  echo -e "${RED}Failed parsing .env. Check error above.${NC}"
-  exit 1
-fi
-import os
-import re
-import sys
-
-env_file = sys.argv[1] if len(sys.argv) > 1 else ''
-temp_file = sys.argv[2] if len(sys.argv) > 2 else ''
-
-if not env_file or not os.path.isfile(env_file):
-    sys.stderr.write(f".env not found at {env_file}\n")
-    sys.exit(1)
-
-def parse_lines(filename):
-    with open(filename, 'r') as f:
-        for raw in f:
-            line = raw.strip()
-            if not line or line.startswith('#'):
-                continue
-            m = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)[:=]\s*(.+)$', line)
-            if not m and '=' in line and not line.startswith('='):
-                key, value = line.split('=', 1)
-            elif m:
-                key, value = m.groups()
-            else:
-                continue
-            # Trim surrounding quotes but preserve interior
-            value = value.strip().strip('"').strip("'")
-            # Escape single quotes for safe shell export
-            value = value.replace("'", "'\\''")
-            yield key, value
-
-try:
-    with open(temp_file, 'w') as fh:
-        for k, v in parse_lines(env_file):
-            fh.write(f"export {k}='{v}'\n")
-    sys.exit(0)
-except Exception as e:
-    sys.stderr.write(f"Error parsing .env: {e}\n")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
-PYTHON_SCRIPT
-
-# Check if temp file was created
-if [ ! -f "$TEMP_EXPORTS" ]; then
-  echo -e "${RED}Failed to create env exports file. Python script may have failed.${NC}"
-  exit 1
-fi
-
-# Source the generated exports and remove the temp file
 set -a
-. "$TEMP_EXPORTS" || {
-  echo -e "${RED}Failed to source env exports.${NC}"
-  rm -f "$TEMP_EXPORTS"
-  exit 1
-}
+. "${APP_DIR}/.env"
 set +a
-rm -f "$TEMP_EXPORTS"
 
 # Verify critical env is loaded
 if [ -z "${DATABASE_URL:-}" ]; then
-  echo -e "${RED}DATABASE_URL is not set after loading .env.${NC}"
-  echo -e "${YELLOW}Trying to load from .env directly...${NC}"
-  # Fallback: direct source attempt (might fail if .env has special chars)
-  [ -f .env ] && source <(grep -v '^#' .env | grep '=' | sed "s/:/=/g")
-fi
-
-if [ -z "${DATABASE_URL:-}" ]; then
-  echo -e "${RED}DATABASE_URL still not set. Please check your .env file.${NC}"
+  echo -e "${RED}DATABASE_URL is not set after loading .env. Aborting migrations.${NC}"
   exit 1
 fi
-
-echo -e "${GREEN}DATABASE_URL loaded successfully${NC}"
+echo -e "${GREEN}DATABASE_URL loaded.${NC}"
 
 echo -e "${YELLOW}Running database migrations...${NC}"
-# Ensure DATABASE_URL is available to alembic
-export DATABASE_URL
 alembic upgrade head || {
-  echo -e "${RED}Migration failed. Error details:${NC}"
-  alembic upgrade head 2>&1 | head -20
-  echo -e "${YELLOW}Continuing despite migration failure...${NC}"
+  echo -e "${RED}Migration failed. See alembic logs above.${NC}"
+  exit 1
 }
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
