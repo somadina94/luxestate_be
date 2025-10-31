@@ -58,43 +58,51 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-# Use Python to parse and export env vars
-export $(python3 <<PYTHON_SCRIPT
+# Use Python to parse and write a temporary exports file, then source it
+TEMP_EXPORTS="/tmp/luxestate_exports_$$.sh"
+python3 <<PYTHON_SCRIPT || {
+  echo -e "${RED}Failed parsing .env. Please check formatting.${NC}";
+  exit 1;
+}
 import os
 import re
 import sys
 
-def load_env_file(filename):
-    """Safely load .env file and export variables"""
-    exports = []
+env_file = os.environ.get('ENV_FILE')
+if not env_file or not os.path.isfile(env_file):
+    sys.stderr.write(f".env not found at {env_file}\n")
+    sys.exit(1)
+
+def parse_lines(filename):
     with open(filename, 'r') as f:
-        for line in f:
-            line = line.strip()
+        for raw in f:
+            line = raw.strip()
             if not line or line.startswith('#'):
                 continue
-            # Handle KEY=VALUE or KEY: VALUE format
-            match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)[:=]\s*(.+)$', line)
-            if match:
-                key, value = match.groups()
-                value = value.strip().strip('"').strip("'")
-                # Escape for shell
-                value = value.replace("'", "'\\''")
-                exports.append(f"{key}='{value}'")
-            elif '=' in line and not line.startswith('='):
+            m = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)[:=]\s*(.+)$', line)
+            if not m and '=' in line and not line.startswith('='):
                 key, value = line.split('=', 1)
-                value = value.strip().strip('"').strip("'")
-                value = value.replace("'", "'\\''")
-                exports.append(f"{key}='{value}'")
-    return exports
+            elif m:
+                key, value = m.groups()
+            else:
+                continue
+            # Trim surrounding quotes but preserve interior
+            value = value.strip().strip('"').strip("'")
+            # Escape single quotes for safe shell export
+            value = value.replace("'", "'\\''")
+            yield key, value
 
-try:
-    exports = load_env_file('$ENV_FILE')
-    print(' '.join(exports))
-except Exception as e:
-    sys.stderr.write(f"Error loading .env: {e}\n")
-    sys.exit(1)
+out = os.environ.get('TEMP_EXPORTS')
+with open(out, 'w') as fh:
+    for k, v in parse_lines(env_file):
+        fh.write(f"export {k}='{v}'\n")
 PYTHON_SCRIPT
-) 2>/dev/null
+
+# Source the generated exports and remove the temp file
+set -a
+. "$TEMP_EXPORTS"
+set +a
+rm -f "$TEMP_EXPORTS"
 
 # Verify critical env is loaded
 if [ -z "${DATABASE_URL:-}" ]; then
