@@ -72,7 +72,10 @@ fi
 
 # Use Python to parse and write a temporary exports file, then source it
 TEMP_EXPORTS="/tmp/luxestate_exports_$$.sh"
-python3 <<'PYTHON_SCRIPT' "${ENV_FILE}" "${TEMP_EXPORTS}"
+if ! python3 <<'PYTHON_SCRIPT' "${ENV_FILE}" "${TEMP_EXPORTS}" 2>&1; then
+  echo -e "${RED}Failed parsing .env. Check error above.${NC}"
+  exit 1
+fi
 import os
 import re
 import sys
@@ -107,19 +110,27 @@ try:
     with open(temp_file, 'w') as fh:
         for k, v in parse_lines(env_file):
             fh.write(f"export {k}='{v}'\n")
+    sys.exit(0)
 except Exception as e:
     sys.stderr.write(f"Error parsing .env: {e}\n")
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 PYTHON_SCRIPT
 
-if [ $? -ne 0 ]; then
-  echo -e "${RED}Failed parsing .env. Please check formatting.${NC}"
+# Check if temp file was created
+if [ ! -f "$TEMP_EXPORTS" ]; then
+  echo -e "${RED}Failed to create env exports file. Python script may have failed.${NC}"
   exit 1
 fi
 
 # Source the generated exports and remove the temp file
 set -a
-. "$TEMP_EXPORTS"
+. "$TEMP_EXPORTS" || {
+  echo -e "${RED}Failed to source env exports.${NC}"
+  rm -f "$TEMP_EXPORTS"
+  exit 1
+}
 set +a
 rm -f "$TEMP_EXPORTS"
 
