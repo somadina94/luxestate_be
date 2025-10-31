@@ -6,7 +6,7 @@ from starlette import status
 from app.database import Base, SessionLocal, engine
 from app.config import settings
 from app.Middleware.audit_middleware import audit_log_middleware
-from app import models  # Import all models so Base.metadata knows about them
+from app import models
 from app.limits import limiter, RateLimitExceeded, SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded as _RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
