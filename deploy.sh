@@ -46,7 +46,12 @@ pip install -r requirements.txt
 
 if [ ! -f .env ]; then
   echo -e "${RED}.env file not found at ${APP_DIR}. Create it before running the service.${NC}"
+  exit 1
 fi
+
+# Load .env file for migrations
+echo -e "${YELLOW}Loading environment variables...${NC}"
+export $(grep -v '^#' .env | xargs)
 
 echo -e "${YELLOW}Running database migrations...${NC}"
 alembic upgrade head || echo -e "${RED}Migration failed, continuing...${NC}"
