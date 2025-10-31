@@ -29,6 +29,10 @@ async def audit_log_middleware(request: Request, call_next):
 
     method = request.method
     path = request.url.path
+
+    # Bypass audit logging for health checks to avoid DB writes on /healthy
+    if path == "/healthy":
+        return await call_next(request)
     ip_address = request.headers.get("x-forwarded-for") or (
         request.client.host if request.client else None
     )
