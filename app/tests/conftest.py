@@ -107,6 +107,20 @@ def patch_email_and_random(monkeypatch):
     monkeypatch.setattr(
         auth_router, "send_verification_email", _send_verification_email, raising=True
     )
+    
+    # Mock send_email from notifications service (used by tickets)
+    from app.services import notifications as notifications_module
+    from app.services import tickets as tickets_module
+    def _mock_send_email(to_email: str, subject: str, body: str):
+        return True  # No-op for tests
+    monkeypatch.setattr(
+        notifications_module, "send_email", _mock_send_email, raising=True
+    )
+    # Also patch where it's imported in tickets service
+    monkeypatch.setattr(
+        tickets_module, "send_email", _mock_send_email, raising=True
+    )
+    
     # Fix the random code to deterministic value
     monkeypatch.setattr(_random, "randint", lambda a, b: 123456, raising=True)
     # Make subscription check always return active PAID for tests using it
