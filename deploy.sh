@@ -60,6 +60,19 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+# Ensure SQLite database directory exists and is writable (if using SQLite)
+DB_PATH=$(grep "^DATABASE_URL=" .env | cut -d'=' -f2- | sed "s/^[\"']//;s/[\"']$//" || echo "sqlite:////home/${RUN_USER}/luxestate/luxestate.db")
+if echo "$DB_PATH" | grep -q "^sqlite"; then
+  # Extract absolute path from sqlite:////path/to/db.db
+  SQLITE_FILE=$(echo "$DB_PATH" | sed 's|sqlite:///||')
+  SQLITE_DIR=$(dirname "$SQLITE_FILE")
+  echo -e "${YELLOW}Ensuring SQLite database directory is writable: ${SQLITE_DIR}${NC}"
+  mkdir -p "$SQLITE_DIR"
+  touch "$SQLITE_FILE" 2>/dev/null || true
+  chmod 664 "$SQLITE_FILE" 2>/dev/null || true
+  chown ${RUN_USER}:${RUN_USER} "$SQLITE_DIR" "$SQLITE_FILE" 2>/dev/null || true
+fi
+
 # Load .env (requires KEY=VALUE with proper quoting)
 echo -e "${YELLOW}Loading environment variables from ${APP_DIR}/.env...${NC}"
 set -a
@@ -73,11 +86,16 @@ if [ -z "${DATABASE_URL:-}" ]; then
 fi
 echo -e "${GREEN}DATABASE_URL loaded.${NC}"
 
-echo -e "${YELLOW}Running database migrations...${NC}"
-alembic upgrade head || {
-  echo -e "${RED}Migration failed. See alembic logs above.${NC}"
-  exit 1
-}
+# Run migrations (skip for SQLite since tables are auto-created)
+if echo "${DATABASE_URL:-}" | grep -q "^sqlite"; then
+  echo -e "${YELLOW}Skipping migrations for SQLite (tables auto-created on startup)${NC}"
+else
+  echo -e "${YELLOW}Running database migrations...${NC}"
+  alembic upgrade head || {
+    echo -e "${RED}Migration failed. See alembic logs above.${NC}"
+    exit 1
+  }
+fi
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 if [ $(id -u) -ne 0 ]; then
@@ -87,8 +105,14 @@ else
 fi
 
 echo -e "${YELLOW}Writing systemd service: ${SERVICE_FILE}${NC}"
-${SUDO} bash -c "cat > ${SERVICE_FILE}" <<EOF
-[Unit]
+# Extract DATABASE_URL from .env for explicit setting (systemd EnvironmentFile can be unreliable with quotes)
+DATABASE_URL_VALUE=""
+if [ -f "${APP_DIR}/.env" ]; then
+  DATABASE_URL_VALUE=$(grep "^DATABASE_URL=" "${APP_DIR}/.env" | cut -d'=' -f2- | sed "s/^[\"']//;s/[\"']$//")
+fi
+
+# Build service file content
+SERVICE_CONTENT="[Unit]
 Description=LuxeState API (FastAPI Uvicorn)
 After=network.target
 
@@ -96,14 +120,25 @@ After=network.target
 Type=simple
 User=${RUN_USER}
 WorkingDirectory=${APP_DIR}
-EnvironmentFile=${APP_DIR}/.env
+EnvironmentFile=${APP_DIR}/.env"
+
+# Add explicit DATABASE_URL if we found it
+if [ -n "$DATABASE_URL_VALUE" ]; then
+  SERVICE_CONTENT="${SERVICE_CONTENT}
+Environment=DATABASE_URL=${DATABASE_URL_VALUE}"
+fi
+
+SERVICE_CONTENT="${SERVICE_CONTENT}
 ExecStart=${APP_DIR}/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 4
 Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
-EOF
+WantedBy=multi-user.target"
+
+${SUDO} bash -c "cat > ${SERVICE_FILE}" <<ENDOFFILE
+${SERVICE_CONTENT}
+ENDOFFILE
 
 echo -e "${YELLOW}Reloading systemd and restarting service...${NC}"
 ${SUDO} systemctl daemon-reload

@@ -1,11 +1,12 @@
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict, field_validator
-import json
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "sqlite:///./luxestate.db"
+    # Use absolute path for SQLite (default to /home/ubuntu/luxestate/luxestate.db)
+    # Can be overridden with DATABASE_URL in .env
+    DATABASE_URL: str = "sqlite:////home/ubuntu/luxestate/luxestate.db"
 
     # JWT
     SECRET_KEY: str
