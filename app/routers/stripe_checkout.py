@@ -30,9 +30,9 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
     response_description="Stripe checkout session created successfully",
 )
 def create_checkout_session(
-    db: db_dependency, user: user_dependency, request: StripeCheckoutCreate
+    db: db_dependency, user: user_dependency, checkout_request: StripeCheckoutCreate
 ):
-    result = StripeCheckoutService(db).create_checkout_session(user, request)
+    result = StripeCheckoutService(db).create_checkout_session(user, checkout_request)
     # Log checkout initiation (do not log sensitive payment data)
     AuditLogService().create_log(
         db=db,

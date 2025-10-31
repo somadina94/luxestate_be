@@ -105,8 +105,11 @@ def test_stripe_checkout_create_and_webhook(client, db_session, monkeypatch):
     # Create checkout session
     headers = _headers(db_session, user)
     payload = {"subscription_plan_id": plan.id}
+    # Ensure plan is committed and visible
+    db_session.commit()
+    db_session.flush()
     r = client.post("/stripe_checkout/", headers=headers, json=payload)
-    assert r.status_code == 200
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
     assert r.json()["id"]
 
     # Webhook: mock signature verify and settings secret

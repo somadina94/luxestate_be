@@ -12,8 +12,20 @@ from app.main import app
 from app.database import Base
 from app.routers import auth as auth_router
 import app.Middleware.audit_middleware as audit_mw
-from app.models import user as _user_model  # ensure tables are registered
-from app.models import audit_log as _audit_model
+# Import all models to ensure they're registered with Base.metadata
+from app.models import (
+    user,
+    property,
+    property_images,
+    favorite,
+    chat,
+    notification,
+    ticket,
+    subscription,
+    seller_subscription_plan,
+    announcement,
+    audit_log,
+)
 import app.database as db_module
 import app.utils.email_utils as email_utils
 from app.services import subscription as subscription_service_module
@@ -67,6 +79,14 @@ def patch_sessionlocal(monkeypatch, test_engine, db_session):
     monkeypatch.setattr(db_module, "SessionLocal", TestingSessionLocal, raising=True)
     # Patch audit middleware SessionLocal similarly
     monkeypatch.setattr(audit_mw, "SessionLocal", TestingSessionLocal, raising=True)
+    
+    # Patch stripe_checkout router's SessionLocal (it imports it directly)
+    import app.routers.stripe_checkout as stripe_checkout_router
+    monkeypatch.setattr(stripe_checkout_router, "SessionLocal", TestingSessionLocal, raising=True)
+    
+    # Also patch engine to use test engine (prevents Supabase connection)
+    monkeypatch.setattr(db_module, "engine", test_engine, raising=False)
+    
     # Disable rate limiter globally for tests
     if hasattr(app.state, "limiter"):
         setattr(app.state.limiter, "enabled", False)
