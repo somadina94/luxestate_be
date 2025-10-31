@@ -50,11 +50,18 @@ jobs:
             # Navigate to project directory
             cd /home/${{ secrets.EC2_USERNAME }}/luxestate || mkdir -p /home/${{ secrets.EC2_USERNAME }}/luxestate && cd /home/${{ secrets.EC2_USERNAME }}/luxestate
 
-            # Pull latest code from GitHub
+            # Pull latest code from GitHub (same as deploy.sh logic)
             if [ -d .git ]; then
-              git fetch origin
-              git reset --hard origin/main || git reset --hard origin/master
-              git clean -fd
+              git fetch --all --prune
+              DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "")
+              if [ -z "$DEFAULT_BRANCH" ]; then
+                DEFAULT_BRANCH=$(git branch -r | grep -E 'origin/(main|master)' | head -1 | sed 's@origin/@@' | xargs)
+              fi
+              if [ -n "$DEFAULT_BRANCH" ]; then
+                git reset --hard "origin/${DEFAULT_BRANCH}"
+              else
+                git reset --hard origin/HEAD 2>/dev/null || git reset --hard HEAD
+              fi
             else
               git clone https://github.com/${{ github.repository }}.git .
             fi
@@ -64,56 +71,32 @@ jobs:
               echo "Warning: .env file not found. Please create it manually."
             fi
 
-            # Stop and remove old container
-            docker stop luxestate_api 2>/dev/null || true
-            docker rm luxestate_api 2>/dev/null || true
+            # Ensure deploy.sh is executable and has correct line endings
+            chmod +x deploy.sh
+            dos2unix deploy.sh 2>/dev/null || true
 
-            # Build Docker image
-            echo "Building Docker image..."
-            docker build -t luxestate-api:latest .
+            # Run deployment script
+            echo "Running deployment script..."
+            bash ./deploy.sh || {
+              echo "❌ Deployment failed. Check logs: sudo journalctl -u luxestate -n 50"
+              exit 1
+            }
 
-            # Create network if it doesn't exist
-            docker network create luxestate_network 2>/dev/null || true
-
-            # Run database migrations (if .env exists)
-            if [ -f .env ]; then
-              echo "Running database migrations..."
-              docker run --rm \
-                --network luxestate_network \
-                --env-file .env \
-                luxestate-api:latest \
-                sh -c "alembic upgrade head" || echo "Migration failed, continuing anyway..."
-            fi
-
-            # Start new container
-            echo "Starting application container..."
-            docker run -d \
-              --name luxestate_api \
-              --network luxestate_network \
-              -p 3001:3001 \
-              --restart unless-stopped \
-              --env-file .env \
-              luxestate-api:latest
-
-            # Wait a moment for container to start
+            # Wait a moment for service to start
             sleep 5
 
-            # Check if container is running
-            if docker ps | grep -q luxestate_api; then
-              echo "✅ Container is running!"
+            # Check if service is running
+            if sudo systemctl is-active --quiet luxestate; then
+              echo "✅ Service is running!"
               
               # Test health endpoint
               sleep 3
-              if curl -f http://localhost:3001/healthy > /dev/null 2>&1; then
+              if curl -f http://localhost:3002/healthy > /dev/null 2>&1; then
                 echo "✅ Health check passed!"
               else
-                echo "⚠️ Health check failed. Check logs: docker logs luxestate_api"
+                echo "⚠️ Health check failed. Check logs: sudo journalctl -u luxestate -n 50"
               fi
             else
-              echo "❌ Container failed to start. Check logs: docker logs luxestate_api"
+              echo "❌ Service failed to start. Check logs: sudo journalctl -u luxestate -n 50"
               exit 1
             fi
-
-            # Clean up old images (keep last 3)
-            echo "Cleaning up old Docker images..."
-            docker image prune -af --filter "until=168h" || true
