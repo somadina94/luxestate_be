@@ -11,8 +11,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Configuration
-APP_DIR=${APP_DIR:-/home/$USER/luxestate}
+# Configuration (use the invoking user if run with sudo)
+RUN_USER=${SUDO_USER:-$USER}
+APP_DIR=${APP_DIR:-/home/$RUN_USER/luxestate}
 PYTHON=${PYTHON:-python3}
 PORT=${PORT:-3002}
 SERVICE_NAME=${SERVICE_NAME:-luxestate}
@@ -71,7 +72,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=${USER}
+User=${RUN_USER}
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${APP_DIR}/.env
 ExecStart=${APP_DIR}/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 4
