@@ -50,9 +50,11 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Load .env file for migrations
+# Load .env file for migrations (safe for values with spaces/URLs)
 echo -e "${YELLOW}Loading environment variables...${NC}"
-export $(grep -v '^#' .env | xargs)
+set -a
+. ./.env
+set +a
 
 echo -e "${YELLOW}Running database migrations...${NC}"
 alembic upgrade head || echo -e "${RED}Migration failed, continuing...${NC}"
