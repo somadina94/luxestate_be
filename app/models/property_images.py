@@ -9,8 +9,8 @@ class PropertyImage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     property_id = Column(Integer, ForeignKey("properties.id"), nullable=False)
-    file_key = Column(String(500), nullable=False)  # S3 key
-    file_url = Column(String(1000), nullable=True)  # Full URL
+    file_key = Column(String(500), nullable=False)
+    file_url = Column(String(1000), nullable=True)
     is_primary = Column(Boolean, default=False)
     order_index = Column(Integer, default=0)
     alt_text = Column(String(200), nullable=True)

@@ -12,6 +12,7 @@ from app.main import app
 from app.database import Base
 from app.routers import auth as auth_router
 import app.Middleware.audit_middleware as audit_mw
+
 # Import all models to ensure they're registered with Base.metadata
 from app.models import (
     user,
@@ -49,7 +50,8 @@ def test_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,  # share same in-memory DB across connections
     )
-    Base.metadata.create_all(bind=engine)
+    # Don't create tables here - let db_session fixture handle it
+    # This ensures tables are created fresh for each test with latest schema
     return engine
 
 
@@ -59,8 +61,11 @@ def db_session(test_engine):
         autocommit=False, autoflush=False, bind=test_engine
     )
     # Fresh schema per test to avoid cross-test data (e.g., unique email)
+    # Drop all tables to ensure clean slate
     Base.metadata.drop_all(bind=test_engine)
+
     Base.metadata.create_all(bind=test_engine)
+
     session = TestingSessionLocal()
     try:
         yield session
@@ -79,17 +84,23 @@ def patch_sessionlocal(monkeypatch, test_engine, db_session):
     monkeypatch.setattr(db_module, "SessionLocal", TestingSessionLocal, raising=True)
     # Patch audit middleware SessionLocal similarly
     monkeypatch.setattr(audit_mw, "SessionLocal", TestingSessionLocal, raising=True)
-    
+
     # Patch stripe_checkout router's SessionLocal (it imports it directly)
     import app.routers.stripe_checkout as stripe_checkout_router
-    monkeypatch.setattr(stripe_checkout_router, "SessionLocal", TestingSessionLocal, raising=True)
+
+    monkeypatch.setattr(
+        stripe_checkout_router, "SessionLocal", TestingSessionLocal, raising=True
+    )
     # Patch favorites router's SessionLocal (it imports it directly)
     import app.routers.favorites as favorites_router
-    monkeypatch.setattr(favorites_router, "SessionLocal", TestingSessionLocal, raising=True)
-    
+
+    monkeypatch.setattr(
+        favorites_router, "SessionLocal", TestingSessionLocal, raising=True
+    )
+
     # Also patch engine to use test engine (prevents Supabase connection)
     monkeypatch.setattr(db_module, "engine", test_engine, raising=False)
-    
+
     # Disable rate limiter globally for tests
     if hasattr(app.state, "limiter"):
         setattr(app.state.limiter, "enabled", False)
@@ -110,22 +121,23 @@ def patch_email_and_random(monkeypatch):
     monkeypatch.setattr(
         auth_router, "send_verification_email", _send_verification_email, raising=True
     )
-    
+
     # Mock send_email from notifications service (used by tickets)
     from app.services import notifications as notifications_module
     from app.services import tickets as tickets_module
+
     def _mock_send_email(to_email: str, subject: str, body: str):
         return True  # No-op for tests
+
     monkeypatch.setattr(
         notifications_module, "send_email", _mock_send_email, raising=True
     )
     # Also patch where it's imported in tickets service
-    monkeypatch.setattr(
-        tickets_module, "send_email", _mock_send_email, raising=True
-    )
-    
+    monkeypatch.setattr(tickets_module, "send_email", _mock_send_email, raising=True)
+
     # Fix the random code to deterministic value
     monkeypatch.setattr(_random, "randint", lambda a, b: 123456, raising=True)
+
     # Make subscription check always return active PAID for tests using it
     class _SubObj:
         def __init__(self):

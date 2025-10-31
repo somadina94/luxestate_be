@@ -6,7 +6,7 @@ from app.models.seller_subscription_plan import (
     SubscriptionPlanDurationType,
 )
 from app.models.subscription import Subscription, SubscriptionStatus
-from app.models.property import PropertyType
+from app.models.property import PropertyType, ListingType
 
 
 def _seed_seller_with_subscription(db):
@@ -75,6 +75,7 @@ def _property_payload():
         "year_built": 2010,
         "features": ["garage"],
         "amenities": ["gym"],
+        "listing_type": ListingType.SALE.value,
     }
 
 

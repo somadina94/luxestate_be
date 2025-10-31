@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime
-from app.models.property import PropertyType, PropertyStatus
+from app.models.property import PropertyType, PropertyStatus, ListingType
 
 
 class PropertySearchParams(BaseModel):
@@ -20,6 +20,7 @@ class PropertySearchParams(BaseModel):
 
     # Property details
     property_type: Optional[PropertyType] = None
+    listing_type: Optional[ListingType] = None
     status: Optional[PropertyStatus] = None
     min_bedrooms: Optional[int] = Field(None, ge=0)
     max_bedrooms: Optional[int] = Field(None, ge=0)
@@ -75,6 +76,7 @@ class PropertyBase(BaseModel):
     year_built: Optional[int] = Field(None, ge=1800, le=2024)
     features: Optional[List[str]] = None
     amenities: Optional[List[str]] = None
+    listing_type: ListingType
 
 
 class PropertyCreate(PropertyBase):
@@ -91,6 +93,7 @@ class PropertyUpdate(BaseModel):
     square_feet: Optional[int] = Field(None, gt=0)
     features: Optional[List[str]] = None
     amenities: Optional[List[str]] = None
+    listing_type: Optional[ListingType] = None
 
 
 class PropertyResponse(PropertyBase):
@@ -101,7 +104,7 @@ class PropertyResponse(PropertyBase):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-
+    listing_type: ListingType
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -133,5 +136,5 @@ class PropertyLocationResponse(BaseModel):
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     distance: float  # ✅ include computed field
-
+    listing_type: ListingType
     model_config = ConfigDict(from_attributes=True)

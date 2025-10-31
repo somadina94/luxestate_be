@@ -3,7 +3,7 @@ from io import BytesIO
 from fastapi import UploadFile
 from app.services.auth_service import create_access_token
 from app.models.user import User, UserRole
-from app.models.property import Property, PropertyType
+from app.models.property import Property, PropertyType, ListingType
 from app.models.property_images import PropertyImage
 from app.services import image_service as image_service_module
 
@@ -32,6 +32,7 @@ def _seed_seller_and_property(db):
         zip_code="z",
         country="USA",
         property_type=PropertyType.HOUSE,
+        listing_type=ListingType.SALE,
         agent_id=user.id,
     )
     db.add(prop)

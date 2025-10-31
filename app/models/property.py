@@ -16,6 +16,12 @@ from app.database import Base
 import enum
 
 
+class ListingType(str, enum.Enum):
+    SALE = "sale"
+    RENT = "rent"
+    LEASE = "lease"
+
+
 class PropertyType(str, enum.Enum):
     APARTMENT = "apartment"
     HOUSE = "house"
@@ -55,6 +61,7 @@ class Property(Base):
     # Property Details
     property_type = Column(Enum(PropertyType), nullable=False)
     status = Column(Enum(PropertyStatus), default=PropertyStatus.AVAILABLE)
+    listing_type = Column(Enum(ListingType), nullable=False)
     bedrooms = Column(Integer, nullable=True)
     bathrooms = Column(Float, nullable=True)
     square_feet = Column(Integer, nullable=True)
