@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.services.auth_service import create_access_token
 from app.models.user import User, UserRole
 from app.models.seller_subscription_plan import (
@@ -16,7 +16,7 @@ def _seed_admin(db):
         role=UserRole.ADMIN,
         is_active=True,
         is_verified=True,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(u)
     db.commit()
@@ -37,7 +37,7 @@ def test_announcements_crud(client, db_session):
         "title": "Maintenance",
         "content": "We will be down.",
         "link": None,
-        "expires_at": datetime.utcnow().isoformat(),
+        "expires_at": datetime.now(timezone.utc).isoformat(),
     }
     c = client.post("/announcements/", headers=headers, json=payload)
     assert c.status_code == 201

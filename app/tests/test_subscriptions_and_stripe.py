@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import types
 import pytest
 from app.services.auth_service import create_access_token
@@ -19,7 +19,7 @@ def _seed_user(db, role=UserRole.ADMIN, email="admin@example.com"):
         role=role,
         is_active=True,
         is_verified=True,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(u)
     db.commit()
@@ -51,8 +51,8 @@ def test_subscriptions_endpoints(client, db_session):
     sub = Subscription(
         user_id=user.id,
         subscription_plan_id=plan.id,
-        start_date=datetime.utcnow(),
-        end_date=datetime.utcnow() + timedelta(days=30),
+        start_date=datetime.now(timezone.utc),
+        end_date=datetime.now(timezone.utc) + timedelta(days=30),
         status=SubscriptionStatus.PAID,
     )
     db_session.add(sub)
@@ -128,6 +128,6 @@ def test_stripe_checkout_create_and_webhook(client, db_session, monkeypatch):
     monkeypatch.setattr(sc_mod.stripe.Webhook, "construct_event", staticmethod(_fake_construct_event), raising=True)
     monkeypatch.setattr(sc_mod.settings, "STRIPE_WEBHOOK_SECRET", "whsec_test", raising=True)
 
-    wr = client.post("/stripe_checkout/webhook", data=b"{}", headers={"stripe-signature": "t"})
+    wr = client.post("/stripe_checkout/webhook", content=b"{}", headers={"stripe-signature": "t"})
     assert wr.status_code == 200
 

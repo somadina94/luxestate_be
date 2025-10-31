@@ -12,7 +12,7 @@ class SellerSubscriptionService:
         self.db = db
 
     def create_subscription_plan(self, subscription_plan_data: SubscriptionPlanCreate):
-        new_subscription_plan = SubscriptionPlan(**subscription_plan_data.dict())
+        new_subscription_plan = SubscriptionPlan(**subscription_plan_data.model_dump())
         self.db.add(new_subscription_plan)
         self.db.commit()
         self.db.refresh(new_subscription_plan)

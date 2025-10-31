@@ -2,7 +2,7 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc
 from app.models.audit_log import AuditLog
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class AuditLogService:
@@ -90,7 +90,7 @@ class AuditLogService:
         self, db: Session, user_id: int, days: int = 30
     ) -> List[AuditLog]:
         """Get recent activity for a specific user"""
-        since = datetime.utcnow() - timedelta(days=max(1, days))
+        since = datetime.now(timezone.utc) - timedelta(days=max(1, days))
         return (
             db.query(AuditLog)
             .filter(AuditLog.user_id == user_id, AuditLog.timestamp >= since)

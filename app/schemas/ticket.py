@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import List, Optional
 
@@ -27,8 +27,7 @@ class MessageResponse(MessageBase):
     sender_id: int
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserResponse(BaseModel):
@@ -37,8 +36,7 @@ class UserResponse(BaseModel):
     last_name: str
     email: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketResponse(TicketBase):
@@ -49,8 +47,7 @@ class TicketResponse(TicketBase):
     messages: Optional[List[MessageResponse]] = []
     user: UserResponse
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketUpdate(BaseModel):

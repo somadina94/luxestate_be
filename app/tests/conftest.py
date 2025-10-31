@@ -1,3 +1,4 @@
+import os
 import asyncio
 import random as _random
 import types
@@ -17,6 +18,9 @@ import app.database as db_module
 import app.utils.email_utils as email_utils
 from app.services import subscription as subscription_service_module
 from app.models.subscription import SubscriptionStatus
+
+# Set TESTING environment variable to prevent email sending
+os.environ["TESTING"] = "true"
 
 
 @pytest.fixture(scope="session")
@@ -75,8 +79,13 @@ def patch_email_and_random(monkeypatch):
     async def _send_verification_email(email: str, code: str):
         return True
 
+    # Patch in the email_utils module (where it's defined)
     monkeypatch.setattr(
         email_utils, "send_verification_email", _send_verification_email, raising=True
+    )
+    # ALSO patch in the auth router module (where it's imported and used)
+    monkeypatch.setattr(
+        auth_router, "send_verification_email", _send_verification_email, raising=True
     )
     # Fix the random code to deterministic value
     monkeypatch.setattr(_random, "randint", lambda a, b: 123456, raising=True)

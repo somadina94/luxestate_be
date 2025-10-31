@@ -9,7 +9,7 @@ class SubscriptionService:
         self.db = db
 
     def create_subscription(self, subscription_data: SubscriptionCreate):
-        new_subscription = Subscription(**subscription_data.dict())
+        new_subscription = Subscription(**subscription_data.model_dump())
         self.db.add(new_subscription)
         self.db.commit()
         self.db.refresh(new_subscription)
@@ -32,7 +32,10 @@ class SubscriptionService:
         )
         if not subscription:
             raise HTTPException(status_code=404, detail="Subscription not found")
-        subscription.update(subscription_data.dict())
+        # Update fields selectively
+        update_data = subscription_data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(subscription, key, value)
         self.db.commit()
         self.db.refresh(subscription)
         return subscription

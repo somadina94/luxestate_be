@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pywebpush import json
 from sqlalchemy.orm import Session
@@ -46,7 +46,7 @@ def register_push_token(
             u.expo_token = expo_token
         if web_sub:
             u.web_push_subscription = json.dumps(web_sub)
-        u.updated_at = datetime.utcnow()
+        u.updated_at = datetime.now(timezone.utc)
     db.commit()
     AuditLogService().create_log(
         db=db,

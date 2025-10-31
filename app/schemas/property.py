@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 from app.models.property import PropertyType, PropertyStatus
@@ -102,8 +102,7 @@ class PropertyResponse(PropertyBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PropertyLocationResponse(BaseModel):
@@ -135,5 +134,4 @@ class PropertyLocationResponse(BaseModel):
     updated_at: Optional[datetime]
     distance: float  # ✅ include computed field
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

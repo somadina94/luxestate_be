@@ -8,7 +8,7 @@ from app.models.chat import Message, Conversation
 from app.services.auth_service import get_current_user
 from app.services.notifications import dispatch_notification
 from app.services.audit_log_service import AuditLogService
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # in-memory managers
@@ -228,7 +228,7 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
                         "timestamp": (
                             message.timestamp.isoformat()
                             if hasattr(message, "timestamp")
-                            else datetime.utcnow().isoformat()
+                            else datetime.now(timezone.utc).isoformat()
                         ),
                     },
                 }

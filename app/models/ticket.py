@@ -1,8 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from app.database import Base
+
+
+def utc_now():
+    """Return current UTC timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 
 class TicketStatus(str, enum.Enum):
@@ -17,7 +22,7 @@ class Ticket(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String)
     status = Column(String, default="open")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     messages = relationship(
         "TicketMessage", back_populates="ticket", cascade="all, delete-orphan"
     )
@@ -30,5 +35,5 @@ class TicketMessage(Base):
     ticket_id = Column(Integer, ForeignKey("tickets.id"))
     sender_id = Column(Integer, ForeignKey("users.id"))
     message = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     ticket = relationship("Ticket", back_populates="messages")

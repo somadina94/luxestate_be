@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.models.seller_subscription_plan import SubscriptionPlanDurationType
 
 
@@ -22,8 +22,7 @@ class SubscriptionPlanResponse(SubscriptionPlanBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SubscriptionPlanUpdate(SubscriptionPlanBase):
