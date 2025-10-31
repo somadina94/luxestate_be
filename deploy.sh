@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Configuration
 APP_DIR=${APP_DIR:-/home/$USER/luxestate}
 PYTHON=${PYTHON:-python3}
-PORT=${PORT:-3001}
+PORT=${PORT:-3002}
 SERVICE_NAME=${SERVICE_NAME:-luxestate}
 
 echo -e "${GREEN}Starting deployment...${NC}"
