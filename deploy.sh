@@ -50,11 +50,32 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Load .env file for migrations (safe for values with spaces/URLs)
+# Load .env file for migrations (Python-based parser to handle special chars)
 echo -e "${YELLOW}Loading environment variables...${NC}"
-set -a
-. ./.env
-set +a
+eval "$(python3 <<'PYTHON_SCRIPT'
+import os
+import re
+
+def load_env_file(filename):
+    """Safely load .env file and export variables"""
+    with open(filename, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)[:=]\s*(.+)$', line)
+            if match:
+                key, value = match.groups()
+                value = value.strip().strip('"').strip("'")
+                print(f'export {key}={repr(value)}')
+            elif '=' in line and not line.startswith('='):
+                key, value = line.split('=', 1)
+                value = value.strip().strip('"').strip("'")
+                print(f'export {key}={repr(value)}')
+
+load_env_file('.env')
+PYTHON_SCRIPT
+)"
 
 echo -e "${YELLOW}Running database migrations...${NC}"
 alembic upgrade head || echo -e "${RED}Migration failed, continuing...${NC}"
