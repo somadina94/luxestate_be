@@ -77,6 +77,13 @@ load_env_file('.env')
 PYTHON_SCRIPT
 )"
 
+# Verify critical env is loaded
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo -e "${RED}DATABASE_URL is not set after loading .env. Aborting migrations.${NC}"
+  exit 1
+fi
+echo -e "${GREEN}DATABASE_URL loaded.${NC}"
+
 echo -e "${YELLOW}Running database migrations...${NC}"
 alembic upgrade head || echo -e "${RED}Migration failed, continuing...${NC}"
 
