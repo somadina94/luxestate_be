@@ -27,7 +27,7 @@ if [ -d .git ]; then
   echo -e "${YELLOW}Fetching latest code...${NC}"
   git fetch origin
   git reset --hard origin/main || git reset --hard origin/master
-  git clean -fd
+  # Removed aggressive clean to avoid deleting untracked files like .env
 else
   echo -e "${YELLOW}Cloning repository...${NC}"
   # Replace with your repo URL if needed
