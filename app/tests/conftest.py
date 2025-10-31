@@ -83,6 +83,9 @@ def patch_sessionlocal(monkeypatch, test_engine, db_session):
     # Patch stripe_checkout router's SessionLocal (it imports it directly)
     import app.routers.stripe_checkout as stripe_checkout_router
     monkeypatch.setattr(stripe_checkout_router, "SessionLocal", TestingSessionLocal, raising=True)
+    # Patch favorites router's SessionLocal (it imports it directly)
+    import app.routers.favorites as favorites_router
+    monkeypatch.setattr(favorites_router, "SessionLocal", TestingSessionLocal, raising=True)
     
     # Also patch engine to use test engine (prevents Supabase connection)
     monkeypatch.setattr(db_module, "engine", test_engine, raising=False)
