@@ -26,8 +26,20 @@ cd "${APP_DIR}"
 
 if [ -d .git ]; then
   echo -e "${YELLOW}Fetching latest code...${NC}"
-  git fetch origin
-  git reset --hard origin/main || git reset --hard origin/master
+  git fetch --all --prune
+  # Detect default branch from origin
+  DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "")
+  if [ -z "$DEFAULT_BRANCH" ]; then
+    # Try to detect from available branches
+    DEFAULT_BRANCH=$(git branch -r | grep -E 'origin/(main|master)' | head -1 | sed 's@origin/@@' | xargs)
+  fi
+  if [ -n "$DEFAULT_BRANCH" ]; then
+    echo -e "${GREEN}Resetting to origin/${DEFAULT_BRANCH}...${NC}"
+    git reset --hard "origin/${DEFAULT_BRANCH}"
+  else
+    echo -e "${YELLOW}Could not detect default branch, resetting to origin/HEAD...${NC}"
+    git reset --hard origin/HEAD 2>/dev/null || git reset --hard HEAD
+  fi
   # Removed aggressive clean to avoid deleting untracked files like .env
 else
   echo -e "${YELLOW}Cloning repository...${NC}"
