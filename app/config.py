@@ -26,19 +26,7 @@ class Settings(BaseSettings):
     EXPO_PUSH_URL: str
     VAPID_PUBLIC_KEY: str
     VAPID_PRIVATE_KEY: str
-    VAPID_CLAIMS: dict[str, str]
-
-    @field_validator("VAPID_CLAIMS", mode="before")
-    @classmethod
-    def parse_vapid_claims(cls, v):
-        """Parse VAPID_CLAIMS from JSON string if it's a string, otherwise return as-is."""
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:
-                # If JSON parsing fails, return the string wrapped in a dict or raise
-                raise ValueError(f"Invalid JSON in VAPID_CLAIMS: {v}")
-        return v
+    VAPID_CLAIMS: dict[str, str] = {"sub": "mailto:support@jahbyte.com"}
 
     STRIPE_PUBLISHABLE_KEY: str
     STRIPE_SECRET_KEY: str
