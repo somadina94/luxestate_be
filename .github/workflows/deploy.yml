@@ -49,8 +49,11 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Navigate to project directory
-            cd /home/${{ secrets.EC2_USERNAME }}/luxestate || mkdir -p /home/${{ secrets.EC2_USERNAME }}/luxestate && cd /home/${{ secrets.EC2_USERNAME }}/luxestate
+            # Ensure project directory exists and fix ownership (avoids .git permission issues)
+            APP_DIR="/home/${{ secrets.EC2_USERNAME }}/luxestate"
+            mkdir -p "$APP_DIR"
+            sudo chown -R "${{ secrets.EC2_USERNAME }}:${{ secrets.EC2_USERNAME }}" "$APP_DIR"
+            cd "$APP_DIR"
 
             # Pull latest code from GitHub (same as deploy.sh logic)
             if [ -d .git ]; then
