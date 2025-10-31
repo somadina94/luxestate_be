@@ -55,7 +55,7 @@ if settings.DATABASE_URL.startswith("sqlite"):
 
 @app.get("/healthy", status_code=status.HTTP_200_OK)
 def health_check():
-    return {"status": "Healthyy"}
+    return {"status": "Healthy"}
 
 
 def get_db():
