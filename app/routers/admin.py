@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette import status
 from app.database import SessionLocal
 from app.models.user import User
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.dependencies import db_dependency, require_permission, Permission
 from app.services.audit_log_service import AuditLogService
 from app.services.auth_service import get_current_user
+from app.schemas.user import UserResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -26,7 +27,7 @@ admin_dependency = Annotated[dict, Depends(require_permission(Permission.MANAGE_
 current_user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
-@router.get("/users", status_code=status.HTTP_200_OK)
+@router.get("/users", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
 def get_all_users(user: user_dependency, db: db_dependency, http_req: Request):
     rows = db.query(User).all()
     AuditLogService().create_log(
