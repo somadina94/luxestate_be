@@ -31,7 +31,7 @@ from app.routers import (
 )
 
 app = FastAPI()
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 app.middleware("http")(audit_log_middleware)
 
 # CORS (permissive for development; tighten in production)
@@ -49,8 +49,8 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 # Note: In production, disable this and use Alembic migrations instead
 # Only create tables if using SQLite (for local dev), not for PostgreSQL/Supabase
-if settings.DATABASE_URL.startswith("sqlite"):
-    Base.metadata.create_all(bind=engine)
+# if settings.DATABASE_URL.startswith("sqlite"):
+Base.metadata.create_all(bind=engine)
 
 
 @app.get("/healthy", status_code=status.HTTP_200_OK)
