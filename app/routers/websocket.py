@@ -14,7 +14,6 @@ def get_db():
     finally:
         db.close()
 
-
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
@@ -23,3 +22,4 @@ async def websocket_endpoint(
     websocket: WebSocket, db: db_dependency, conversation_id: int
 ):
     await chat_websocket(websocket, conversation_id, db)
+
