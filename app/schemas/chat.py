@@ -4,7 +4,6 @@ from pydantic import BaseModel, ConfigDict
 class ConversationCreate(BaseModel):
     user_id: int
     agent_id: int | None = None
-    admin_id: int | None = None
     property_id: int | None = None
     type: str
 

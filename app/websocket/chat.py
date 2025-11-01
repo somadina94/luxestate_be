@@ -5,7 +5,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.chat import Message, Conversation
-from app.services.auth_service import get_current_user
+from app.services.auth_service import decode_token
 from app.services.notifications import dispatch_notification
 from app.services.audit_log_service import AuditLogService
 from datetime import datetime, timezone
@@ -114,7 +114,7 @@ async def chat_websocket(websocket: WebSocket, conversation_id: int, db: Session
         return
 
     try:
-        user = await get_current_user(token)  # returns dict with id,email,role
+        user = await decode_token(token)  # returns dict with id,email,role
     except Exception:
         await websocket.close(code=4401)
         AuditLogService().create_log(

@@ -56,3 +56,17 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not autheticate user",
         )
+
+
+async def decode_token(token: str) -> dict:
+    """Decode JWT token directly from a string (for WebSocket use)."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        user_id: int = payload.get("id")
+        role: str = payload.get("role")
+        if not email or not user_id:
+            raise ValueError("Invalid token: missing email or user_id")
+        return {"email": email, "id": user_id, "role": role}
+    except JWTError as e:
+        raise ValueError(f"Invalid token: {str(e)}")
