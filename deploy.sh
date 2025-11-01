@@ -93,11 +93,31 @@ else
   echo -e "${YELLOW}Running database migrations...${NC}"
   # Export DATABASE_URL explicitly to ensure alembic can access it
   export DATABASE_URL
-  # Run alembic from the virtual environment with DATABASE_URL explicitly set
-  alembic upgrade head || {
-    echo -e "${RED}Migration failed. See alembic logs above.${NC}"
-    exit 1
-  }
+  # Debug: Show DATABASE_URL (without password for security)
+  DB_URL_FOR_LOG=$(echo "$DATABASE_URL" | sed 's/:[^:@]*@/:***@/')
+  echo -e "${YELLOW}Using DATABASE_URL: ${DB_URL_FOR_LOG}${NC}"
+  # Ensure we're in the app directory and venv is activated
+  cd "${APP_DIR}"
+  source venv/bin/activate 2>/dev/null || source venv/Scripts/activate 2>/dev/null
+  # Use venv's alembic command (ensure it's available in PATH)
+  # Fallback to full path if alembic not found in PATH
+  if command -v alembic >/dev/null 2>&1; then
+    alembic upgrade head || {
+      echo -e "${RED}Migration failed. See alembic logs above.${NC}"
+      echo -e "${YELLOW}Debug: DATABASE_URL is set: ${DATABASE_URL:+yes}${DATABASE_URL:-no}${NC}"
+      echo -e "${YELLOW}Debug: Working directory: $(pwd)${NC}"
+      echo -e "${YELLOW}Debug: Alembic path: $(which alembic)${NC}"
+      exit 1
+    }
+  else
+    # Fallback: use full path to venv's alembic
+    "${APP_DIR}/venv/bin/alembic" upgrade head || {
+      echo -e "${RED}Migration failed. See alembic logs above.${NC}"
+      echo -e "${YELLOW}Debug: DATABASE_URL is set: ${DATABASE_URL:+yes}${DATABASE_URL:-no}${NC}"
+      echo -e "${YELLOW}Debug: Working directory: $(pwd)${NC}"
+      exit 1
+    }
+  fi
 fi
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
