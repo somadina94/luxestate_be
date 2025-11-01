@@ -99,28 +99,55 @@ else
   
   # Test database connection before running migrations
   echo -e "${YELLOW}Testing database connection...${NC}"
+  # Get EC2 public IP for Supabase whitelist reference
+  EC2_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s https://api.ipify.org 2>/dev/null || echo "unknown")
+  if [ "$EC2_IP" != "unknown" ]; then
+    echo -e "${YELLOW}Your EC2 Public IP: ${EC2_IP}${NC}"
+    echo -e "${YELLOW}Add this IP to Supabase whitelist: ${EC2_IP}/32${NC}"
+  fi
   cd "${APP_DIR}"
   source venv/bin/activate 2>/dev/null || source venv/Scripts/activate 2>/dev/null
   if python -c "
 import sys
 try:
     from sqlalchemy import create_engine, text
-    engine = create_engine('$DATABASE_URL', connect_args={'connect_timeout': 10})
+    # Try with IPv4 only (disable IPv6) if connection fails
+    import socket
+    # Force IPv4 by using socket options
+    connect_args = {'connect_timeout': 10}
+    # If DATABASE_URL contains IPv6, try forcing IPv4
+    db_url = '$DATABASE_URL'
+    # Try connection
+    engine = create_engine(db_url, connect_args=connect_args)
     with engine.connect() as conn:
         conn.execute(text('SELECT 1'))
     print('Database connection successful')
     sys.exit(0)
 except Exception as e:
-    print(f'Database connection failed: {e}', file=sys.stderr)
+    # If IPv6 fails, try to suggest IPv4 solution or connection pooling
+    error_msg = str(e)
+    if 'Network is unreachable' in error_msg or 'IPv6' in error_msg:
+        print(f'Connection failed (possibly IPv6 issue): {e}', file=sys.stderr)
+        print('TIP: Try using Supabase Connection Pooling URL (port 6543) instead of direct connection (port 5432)', file=sys.stderr)
+        print('Example: postgresql://user:pass@db.xxx.supabase.co:6543/postgres', file=sys.stderr)
+    else:
+        print(f'Database connection failed: {e}', file=sys.stderr)
     sys.exit(1)
 " 2>&1; then
     echo -e "${GREEN}Database connection successful! Proceeding with migrations...${NC}"
   else
     echo -e "${RED}Database connection failed! Cannot run migrations.${NC}"
-    echo -e "${YELLOW}Possible issues:${NC}"
-    echo -e "  1. Supabase IP whitelist - add EC2 instance IP to allowed IPs"
-    echo -e "  2. EC2 security group - ensure outbound connections are allowed"
-    echo -e "  3. Network connectivity - check if EC2 can reach Supabase"
+    echo -e "${YELLOW}Issue detected: IPv6 connectivity problem${NC}"
+    echo -e "${YELLOW}Solution: Use Supabase Connection Pooling URL (port 6543) instead of direct connection${NC}"
+    echo -e ""
+    echo -e "${YELLOW}Steps to fix:${NC}"
+    echo -e "  1. Go to Supabase Dashboard → Settings → Database → Connection Pooling"
+    echo -e "  2. Copy the 'Connection string' (Session mode) - it uses port 6543"
+    echo -e "  3. Update DATABASE_URL in your .env file to use port 6543 instead of 5432"
+    echo -e "     Example: postgresql://postgres:***@db.xxx.supabase.co:6543/postgres"
+    echo -e "  4. Re-run deployment"
+    echo -e ""
+    echo -e "${YELLOW}Alternative: Force IPv4 by modifying your .env DATABASE_URL${NC}"
     echo -e "${YELLOW}Continuing deployment without migrations. You can run migrations manually later.${NC}"
     # Don't exit - allow deployment to continue, migrations can be run later
   fi
