@@ -91,6 +91,9 @@ if echo "${DATABASE_URL:-}" | grep -q "^sqlite"; then
   echo -e "${YELLOW}Skipping migrations for SQLite (tables auto-created on startup)${NC}"
 else
   echo -e "${YELLOW}Running database migrations...${NC}"
+  # Export DATABASE_URL explicitly to ensure alembic can access it
+  export DATABASE_URL
+  # Run alembic from the virtual environment with DATABASE_URL explicitly set
   alembic upgrade head || {
     echo -e "${RED}Migration failed. See alembic logs above.${NC}"
     exit 1

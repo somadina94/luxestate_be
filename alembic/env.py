@@ -16,8 +16,15 @@ config = context.config
 # Override sqlalchemy.url from environment variable or settings
 # This allows us to use DATABASE_URL from .env file instead of alembic.ini
 database_url = os.getenv("DATABASE_URL") or settings.DATABASE_URL
-if database_url and database_url != "sqlite:///./luxestate.db":
-    config.set_main_option("sqlalchemy.url", database_url)
+
+# Always override if we have a DATABASE_URL (not just the default SQLite)
+# This ensures PostgreSQL URLs work correctly in deploy.sh
+if database_url:
+    # Remove any surrounding quotes that might be in the env var
+    database_url = database_url.strip().strip('"').strip("'")
+    # Only skip if it's the exact default SQLite path from alembic.ini
+    if database_url != "sqlite:///./luxestate.db":
+        config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
