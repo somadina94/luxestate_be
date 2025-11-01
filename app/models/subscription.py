@@ -22,7 +22,7 @@ class SubscriptionStatus(str, enum.Enum):
 class Subscription(Base):
     __tablename__ = "subscriptions"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     subscription_plan_id = Column(Integer, ForeignKey("subscription_plans.id"))
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)

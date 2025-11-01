@@ -40,4 +40,4 @@ class User(Base):
     )
     verification_code = Column(String, nullable=True)
     verification_code_expires = Column(DateTime(timezone=True), nullable=True)
-    tickets = relationship("Ticket", back_populates="user")
+    tickets = relationship("Ticket", back_populates="user", cascade="all, delete-orphan")

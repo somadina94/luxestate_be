@@ -17,7 +17,7 @@ class AuditLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     # Actor information
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     user_email = Column(String, nullable=True)  # Denormalized for queries
     user_role = Column(String, nullable=True)  # Denormalized for quick filtering
     ip_address = Column(String, nullable=True)

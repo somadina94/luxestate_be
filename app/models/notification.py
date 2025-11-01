@@ -12,7 +12,7 @@ def utc_now():
 class UserPushToken(Base):
     __tablename__ = "user_push_tokens"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     expo_token = Column(String, nullable=True)  # ExponentPushToken[...] (mobile)
     web_push_subscription = Column(Text, nullable=True)  # JSON string of subscription
     updated_at = Column(DateTime, default=utc_now)
@@ -21,7 +21,7 @@ class UserPushToken(Base):
 class Notification(Base):
     __tablename__ = "notifications"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     title = Column(String)
     body = Column(Text)
     payload = Column(Text, nullable=True)  # JSON payload string

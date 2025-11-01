@@ -19,7 +19,7 @@ class TicketStatus(str, enum.Enum):
 class Ticket(Base):
     __tablename__ = "tickets"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     title = Column(String)
     status = Column(String, default="open")
     created_at = Column(DateTime, default=utc_now)
@@ -32,8 +32,8 @@ class Ticket(Base):
 class TicketMessage(Base):
     __tablename__ = "ticket_messages"
     id = Column(Integer, primary_key=True)
-    ticket_id = Column(Integer, ForeignKey("tickets.id"))
-    sender_id = Column(Integer, ForeignKey("users.id"))
+    ticket_id = Column(Integer, ForeignKey("tickets.id", ondelete="CASCADE"))
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     message = Column(Text)
     created_at = Column(DateTime, default=utc_now)
     ticket = relationship("Ticket", back_populates="messages")

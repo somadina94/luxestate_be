@@ -73,7 +73,7 @@ class Property(Base):
     amenities = Column(JSON, nullable=True)  # ["gym", "concierge", "parking"]
 
     # Agent/Owner
-    agent_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     # Metadata
     is_featured = Column(Boolean, default=False)

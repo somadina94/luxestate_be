@@ -12,20 +12,20 @@ def utc_now():
 class Conversation(Base):
     __tablename__ = "conversations"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    agent_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    admin_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    agent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    admin_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     property_id = Column(Integer, nullable=True)
     type = Column(String, default="user-agent")  # user-agent | support
 
-    messages = relationship("Message", back_populates="conversation")
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
 
 class Message(Base):
     __tablename__ = "messages"
     id = Column(Integer, primary_key=True, index=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id"))
-    sender_id = Column(Integer, ForeignKey("users.id"))
+    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"))
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     content = Column(Text)
     timestamp = Column(DateTime, default=utc_now)
     is_read = Column(Boolean, default=False)
