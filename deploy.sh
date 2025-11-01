@@ -153,20 +153,62 @@ except Exception as e:
   fi
   
   # Run migrations if connection test passed or we're continuing anyway
+  # First, check what migrations are available
+  echo -e "${YELLOW}Checking available migrations...${NC}"
   if command -v alembic >/dev/null 2>&1; then
-    alembic upgrade head || {
-      echo -e "${RED}Migration failed. See alembic logs above.${NC}"
-      echo -e "${YELLOW}You can run migrations manually with: alembic upgrade head${NC}"
-      # Don't exit - allow deployment to continue
-    }
+    ALEMBIC_CMD=alembic
   else
-    # Fallback: use full path to venv's alembic
-    "${APP_DIR}/venv/bin/alembic" upgrade head || {
-      echo -e "${RED}Migration failed. See alembic logs above.${NC}"
-      echo -e "${YELLOW}You can run migrations manually with: alembic upgrade head${NC}"
-      # Don't exit - allow deployment to continue
-    }
+    ALEMBIC_CMD="${APP_DIR}/venv/bin/alembic"
   fi
+  
+  # Verify migration files exist
+  if [ ! -f "${APP_DIR}/alembic/versions/360455739ad0_create_listing_type.py" ]; then
+    echo -e "${RED}ERROR: Migration file 360455739ad0_create_listing_type.py not found!${NC}"
+    echo -e "${YELLOW}Make sure all migration files are committed and deployed.${NC}"
+    ls -la "${APP_DIR}/alembic/versions/" 2>&1 || echo "Could not list migration files"
+  fi
+  
+  # Show available migrations
+  echo -e "${YELLOW}Available migrations:${NC}"
+  $ALEMBIC_CMD history 2>&1 | head -10 || echo "Could not list migration history"
+  
+  # Check current revision
+  CURRENT_REV=$($ALEMBIC_CMD current 2>/dev/null | grep -oE '[a-f0-9]{12}' | head -1 || echo "")
+  echo -e "${YELLOW}Current database revision: ${CURRENT_REV:-none}${NC}"
+  
+  # If database is trying to reference 360455739ad0 but can't find it, reset
+  # This happens when database thinks it's already at 360455739ad0 but the file doesn't exist
+  if [ -n "$CURRENT_REV" ] && [ "$CURRENT_REV" = "360455739ad0" ]; then
+    # Check if the migration file actually exists
+    if [ ! -f "${APP_DIR}/alembic/versions/360455739ad0_create_listing_type.py" ]; then
+      echo -e "${YELLOW}Database is at 360455739ad0 but migration file missing. Resetting...${NC}"
+      $ALEMBIC_CMD stamp f987ec4cb404 2>&1 || echo "Could not reset revision"
+    fi
+  fi
+  
+  # If database is at a revision that doesn't exist, reset it
+  if [ -n "$CURRENT_REV" ] && [ "$CURRENT_REV" != "f987ec4cb404" ] && [ "$CURRENT_REV" != "360455739ad0" ]; then
+    echo -e "${YELLOW}Database is at unknown revision ${CURRENT_REV}, resetting to base revision...${NC}"
+    $ALEMBIC_CMD stamp f987ec4cb404 2>&1 || echo "Could not stamp base revision"
+  fi
+  
+  # If no revision, stamp the base
+  if [ -z "$CURRENT_REV" ]; then
+    echo -e "${YELLOW}No revision found, stamping base revision...${NC}"
+    $ALEMBIC_CMD stamp f987ec4cb404 2>&1 || echo "Could not stamp base revision"
+  fi
+  
+  # Run migrations
+  echo -e "${YELLOW}Running migrations...${NC}"
+  $ALEMBIC_CMD upgrade head || {
+    echo -e "${RED}Migration failed. See alembic logs above.${NC}"
+    echo -e "${YELLOW}Debug info:${NC}"
+    echo -e "  Current revision: $($ALEMBIC_CMD current 2>&1 || echo 'unknown')"
+    echo -e "  Migration files present:"
+    ls -la "${APP_DIR}/alembic/versions/"*.py 2>&1 || echo "  Could not list files"
+    echo -e "  Try manually: alembic stamp f987ec4cb404 && alembic upgrade head${NC}"
+    # Don't exit - allow deployment to continue
+  }
 fi
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
