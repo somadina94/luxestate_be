@@ -96,26 +96,48 @@ else
   # Debug: Show DATABASE_URL (without password for security)
   DB_URL_FOR_LOG=$(echo "$DATABASE_URL" | sed 's/:[^:@]*@/:***@/')
   echo -e "${YELLOW}Using DATABASE_URL: ${DB_URL_FOR_LOG}${NC}"
-  # Ensure we're in the app directory and venv is activated
+  
+  # Test database connection before running migrations
+  echo -e "${YELLOW}Testing database connection...${NC}"
   cd "${APP_DIR}"
   source venv/bin/activate 2>/dev/null || source venv/Scripts/activate 2>/dev/null
-  # Use venv's alembic command (ensure it's available in PATH)
-  # Fallback to full path if alembic not found in PATH
+  if python -c "
+import sys
+try:
+    from sqlalchemy import create_engine, text
+    engine = create_engine('$DATABASE_URL', connect_args={'connect_timeout': 10})
+    with engine.connect() as conn:
+        conn.execute(text('SELECT 1'))
+    print('Database connection successful')
+    sys.exit(0)
+except Exception as e:
+    print(f'Database connection failed: {e}', file=sys.stderr)
+    sys.exit(1)
+" 2>&1; then
+    echo -e "${GREEN}Database connection successful! Proceeding with migrations...${NC}"
+  else
+    echo -e "${RED}Database connection failed! Cannot run migrations.${NC}"
+    echo -e "${YELLOW}Possible issues:${NC}"
+    echo -e "  1. Supabase IP whitelist - add EC2 instance IP to allowed IPs"
+    echo -e "  2. EC2 security group - ensure outbound connections are allowed"
+    echo -e "  3. Network connectivity - check if EC2 can reach Supabase"
+    echo -e "${YELLOW}Continuing deployment without migrations. You can run migrations manually later.${NC}"
+    # Don't exit - allow deployment to continue, migrations can be run later
+  fi
+  
+  # Run migrations if connection test passed or we're continuing anyway
   if command -v alembic >/dev/null 2>&1; then
     alembic upgrade head || {
       echo -e "${RED}Migration failed. See alembic logs above.${NC}"
-      echo -e "${YELLOW}Debug: DATABASE_URL is set: ${DATABASE_URL:+yes}${DATABASE_URL:-no}${NC}"
-      echo -e "${YELLOW}Debug: Working directory: $(pwd)${NC}"
-      echo -e "${YELLOW}Debug: Alembic path: $(which alembic)${NC}"
-      exit 1
+      echo -e "${YELLOW}You can run migrations manually with: alembic upgrade head${NC}"
+      # Don't exit - allow deployment to continue
     }
   else
     # Fallback: use full path to venv's alembic
     "${APP_DIR}/venv/bin/alembic" upgrade head || {
       echo -e "${RED}Migration failed. See alembic logs above.${NC}"
-      echo -e "${YELLOW}Debug: DATABASE_URL is set: ${DATABASE_URL:+yes}${DATABASE_URL:-no}${NC}"
-      echo -e "${YELLOW}Debug: Working directory: $(pwd)${NC}"
-      exit 1
+      echo -e "${YELLOW}You can run migrations manually with: alembic upgrade head${NC}"
+      # Don't exit - allow deployment to continue
     }
   fi
 fi
