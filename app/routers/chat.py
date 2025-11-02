@@ -1,11 +1,11 @@
 from typing import Annotated, List
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, Request
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.database import SessionLocal
 from app.services.auth_service import get_current_user
-from app.models.chat import Conversation
-from app.schemas.chat import ConversationCreate, ConversationResponse
+from app.models.chat import Conversation, Message
+from app.schemas.chat import ConversationCreate, ConversationResponse, MessageResponse
 from app.services.audit_log_service import AuditLogService
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -116,3 +116,65 @@ def create_conversation(
         request_path=http_req.url.path,
     )
     return convo
+
+
+@router.get("/messages/{conversation_id}", response_model=List[MessageResponse])
+def get_messages(
+    conversation_id: int,
+    db: db_dependency,
+    user: user_dependency,
+    http_req: Request,
+):
+    messages = (
+        db.query(Message).filter(Message.conversation_id == conversation_id).all()
+    )
+    AuditLogService().create_log(
+        db=db,
+        action="chat.messages_listed",
+        resource_type="message",
+        resource_id=conversation_id,
+        user_id=user.get("id"),
+        status="success",
+        status_code=200,
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return messages
+
+
+@router.delete("/{conversation_id}", status_code=status.HTTP_200_OK)
+def delete_conversation(
+    conversation_id: int,
+    db: db_dependency,
+    user: user_dependency,
+    http_req: Request,
+):
+    conversation = (
+        db.query(Conversation)
+        .filter(Conversation.id == conversation_id)
+        .filter(
+            or_(
+                Conversation.user_id == user.get("id"),
+                Conversation.agent_id == user.get("id"),
+                Conversation.admin_id == user.get("id"),
+            )
+        )
+        .first()
+    )
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    db.query(Message).filter(Message.conversation_id == conversation_id).delete()
+    db.delete(conversation)
+    db.commit()
+    AuditLogService().create_log(
+        db=db,
+        action="chat.conversation_deleted",
+        resource_type="conversation",
+        resource_id=conversation_id,
+        user_id=user.get("id"),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return {"detail": "Conversation deleted successfully"}

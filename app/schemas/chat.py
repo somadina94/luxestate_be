@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
@@ -18,5 +19,15 @@ class MessageCreate(BaseModel):
     conversation_id: int
     sender_id: int
     content: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MessageResponse(MessageCreate):
+    id: int
+    conversation_id: int
+    sender_id: int
+    created_at: datetime
+    is_read: bool
 
     model_config = ConfigDict(from_attributes=True)
