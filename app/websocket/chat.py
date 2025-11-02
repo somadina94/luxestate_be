@@ -431,7 +431,24 @@ async def chat_websocket_multi(websocket: WebSocket, db: Session):
                     recipient_id = conversation.user_id
 
                 # Handle delivery notifications
+                # Note: With multiple workers, connections may be on different workers
+                # This check only works for connections on the same worker process
                 recipient_online = await manager.is_user_online(recipient_id)
+
+                # Debug logging (helps diagnose multi-worker issues)
+                import logging
+
+                logger = logging.getLogger(__name__)
+                active_connections = len(
+                    manager.by_conversation.get(conversation_id, [])
+                )
+                logger.info(
+                    f"Message sent to conversation {conversation_id}. "
+                    f"Recipient {recipient_id} online check: {recipient_online}. "
+                    f"Active connections in this worker: {active_connections}. "
+                    f"Note: With multiple workers, connections may be on different workers"
+                )
+
                 if recipient_online:
                     delivered_event = {
                         "type": "delivered",
