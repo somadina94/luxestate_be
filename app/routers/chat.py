@@ -1,6 +1,7 @@
-from typing import Annotated
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.database import SessionLocal
 from app.services.auth_service import get_current_user
 from app.models.chat import Conversation
@@ -22,9 +23,59 @@ db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
+@router.get("/conversations", response_model=List[ConversationResponse])
+def get_conversations(
+    db: db_dependency,
+    user: user_dependency,
+    http_req: Request,
+):
+    """Get all conversations where the current user is a participant.
+
+    Returns conversations where the user is:
+    - user_id (the owner)
+    - agent_id (assigned agent)
+    - admin_id (assigned admin)
+
+    This is the endpoint the frontend uses to get conversation_ids
+    for subscribing to WebSocket connections.
+    """
+    user_id = user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    conversations = (
+        db.query(Conversation)
+        .filter(
+            or_(
+                Conversation.user_id == user_id,
+                Conversation.agent_id == user_id,
+                Conversation.admin_id == user_id,
+            )
+        )
+        .all()
+    )
+
+    AuditLogService().create_log(
+        db=db,
+        action="chat.conversations_listed",
+        resource_type="conversation",
+        resource_id=None,
+        user_id=user_id,
+        status="success",
+        status_code=200,
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+
+    return conversations
+
+
 @router.post("/create", response_model=ConversationResponse)
 def create_conversation(
-    request: ConversationCreate, db: db_dependency, user: user_dependency, http_req: Request
+    request: ConversationCreate,
+    db: db_dependency,
+    user: user_dependency,
+    http_req: Request,
 ):
     existing_convo = (
         db.query(Conversation)

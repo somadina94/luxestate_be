@@ -12,3 +12,11 @@ class ConversationResponse(ConversationCreate):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MessageCreate(BaseModel):
+    conversation_id: int
+    sender_id: int
+    content: str
+
+    model_config = ConfigDict(from_attributes=True)
