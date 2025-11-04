@@ -47,8 +47,13 @@ class AuditLogService:
         )
 
         db.add(log)
-        db.commit()
-        db.refresh(log)
+        try:
+            db.commit()
+            db.refresh(log)
+        except Exception:
+            # Rollback on any error (e.g., foreign key violations in tests)
+            db.rollback()
+            raise
         return log
 
     def get_logs(
