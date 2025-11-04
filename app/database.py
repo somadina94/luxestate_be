@@ -14,7 +14,13 @@ if settings.DATABASE_URL.startswith("sqlite"):
         "echo": False,
     }
 else:
-    connect_args = {}
+    # PostgreSQL connection args with timeout settings
+    # Important: Use connection pooling URL (port 6543) for Supabase on EC2
+    # Direct connection (port 5432) can cause connection limits and timeout issues
+    # Supabase has a limit of direct connections (typically 60), but pooling allows many more
+    connect_args = {
+        "connect_timeout": 10,  # 10 second connection timeout
+    }
     # PostgreSQL connection pooling - important for performance
     engine_kwargs = {
         "connect_args": connect_args,
@@ -22,6 +28,7 @@ else:
         "max_overflow": 10,  # Additional connections when pool is exhausted
         "pool_pre_ping": True,  # Verify connections before using
         "pool_recycle": 3600,  # Recycle connections after 1 hour
+        "pool_timeout": 30,  # Wait up to 30 seconds for connection from pool
         "echo": False,  # Set to True for SQL query logging (debug only)
     }
 
