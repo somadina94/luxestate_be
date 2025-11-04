@@ -1,16 +1,29 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
+import os
+
+# Safety check: Prevent accidental production database usage in tests
+if os.getenv("TESTING") == "true" and not settings.DATABASE_URL.startswith("sqlite"):
+    import warnings
+    warnings.warn(
+        f"⚠️  WARNING: Tests are configured but DATABASE_URL points to non-SQLite: {settings.DATABASE_URL[:50]}...\n"
+        "This could cause tests to write to production database!\n"
+        "Set DATABASE_URL=sqlite:///:memory: before importing app modules.",
+        RuntimeWarning,
+        stacklevel=2
+    )
 
 # SQLite needs check_same_thread, PostgreSQL doesn't
 if settings.DATABASE_URL.startswith("sqlite"):
+    from sqlalchemy.pool import NullPool
     connect_args = {"check_same_thread": False}
-    # SQLite doesn't benefit much from connection pooling
+    # SQLite doesn't benefit from connection pooling and has limited pool options
+    # SQLite doesn't support max_overflow, pool_timeout, pool_recycle, or pool_pre_ping
+    # Use NullPool (no pooling) for SQLite
     engine_kwargs = {
         "connect_args": connect_args,
-        "pool_size": 5,
-        "max_overflow": 10,
-        "pool_pre_ping": False,
+        "poolclass": NullPool,  # No connection pooling for SQLite
         "echo": False,
     }
 else:

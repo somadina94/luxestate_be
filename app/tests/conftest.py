@@ -8,6 +8,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
+# CRITICAL: Set test database URL BEFORE importing any app modules
+# This prevents app.database from creating a connection to production Supabase
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["TESTING"] = "true"
+
 from app.main import app
 from app.database import Base
 from app.routers import auth as auth_router
@@ -31,9 +36,6 @@ import app.database as db_module
 import app.utils.email_utils as email_utils
 from app.services import subscription as subscription_service_module
 from app.models.subscription import SubscriptionStatus
-
-# Set TESTING environment variable to prevent email sending
-os.environ["TESTING"] = "true"
 
 
 @pytest.fixture(scope="session")
@@ -75,6 +77,10 @@ def db_session(test_engine):
 
 @pytest.fixture(autouse=True)
 def patch_sessionlocal(monkeypatch, test_engine, db_session):
+    # CRITICAL: Patch engine FIRST before any SessionLocal patches
+    # This ensures all sessions use the test engine where tables are created
+    monkeypatch.setattr(db_module, "engine", test_engine, raising=False)
+
     # Patch the SessionLocal used by routers to our testing session factory
     TestingSessionLocal = sessionmaker(
         autocommit=False, autoflush=False, bind=test_engine
@@ -82,24 +88,62 @@ def patch_sessionlocal(monkeypatch, test_engine, db_session):
 
     # Patch SessionLocal to a real session factory bound to the shared test engine
     monkeypatch.setattr(db_module, "SessionLocal", TestingSessionLocal, raising=True)
+    
+    # Patch SessionLocal in dependencies.py (used by db_dependency)
+    import app.dependencies as dependencies_module
+    monkeypatch.setattr(dependencies_module, "SessionLocal", TestingSessionLocal, raising=True)
+    # Also patch the get_db function in dependencies to use test SessionLocal
+    def test_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+    monkeypatch.setattr(dependencies_module, "get_db", test_get_db, raising=True)
+    
     # Patch audit middleware SessionLocal similarly
     monkeypatch.setattr(audit_mw, "SessionLocal", TestingSessionLocal, raising=True)
 
-    # Patch stripe_checkout router's SessionLocal (it imports it directly)
-    import app.routers.stripe_checkout as stripe_checkout_router
+    # Patch all routers that import SessionLocal directly
+    # Most routers have their own get_db() that uses SessionLocal()
+    router_modules = [
+        "app.routers.stripe_checkout",
+        "app.routers.favorites", 
+        "app.routers.properties",
+        "app.routers.auth",
+        "app.routers.user",
+        "app.routers.chat",
+        "app.routers.websocket",
+        "app.routers.admin",
+        "app.routers.seller_subscription",
+        "app.routers.ticket",
+        "app.routers.push",
+        "app.routers.announcements",
+        "app.routers.notifications",
+        "app.routers.images",
+    ]
+    
+    for router_path in router_modules:
+        try:
+            router_module = __import__(router_path, fromlist=[""])
+            if hasattr(router_module, "SessionLocal"):
+                monkeypatch.setattr(router_module, "SessionLocal", TestingSessionLocal, raising=False)
+            if hasattr(router_module, "get_db"):
+                monkeypatch.setattr(router_module, "get_db", test_get_db, raising=False)
+        except ImportError:
+            pass  # Skip if module doesn't exist
 
-    monkeypatch.setattr(
-        stripe_checkout_router, "SessionLocal", TestingSessionLocal, raising=True
-    )
-    # Patch favorites router's SessionLocal (it imports it directly)
-    import app.routers.favorites as favorites_router
-
-    monkeypatch.setattr(
-        favorites_router, "SessionLocal", TestingSessionLocal, raising=True
-    )
-
-    # Also patch engine to use test engine (prevents Supabase connection)
-    monkeypatch.setattr(db_module, "engine", test_engine, raising=False)
+    # Also patch main.py's get_db if it exists
+    from app import main as main_module
+    if hasattr(main_module, "get_db"):
+        # Replace the get_db function to use our test SessionLocal
+        def get_db():
+            db = TestingSessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+        monkeypatch.setattr(main_module, "get_db", get_db, raising=False)
 
     # Disable rate limiter globally for tests
     if hasattr(app.state, "limiter"):

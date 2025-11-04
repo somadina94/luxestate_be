@@ -17,6 +17,7 @@ from app.limits import limiter, RateLimitExceeded, SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded as _RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -58,51 +59,59 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 
-# Database error handler
-@app.exception_handler(OperationalError)
-async def database_operational_error_handler(request: Request, exc: OperationalError):
-    """Handle database connection/operation errors"""
-    logger.error(f"Database operational error: {exc}", exc_info=True)
-    error_msg = str(exc)
+# Database error handler - only active in production, not in tests
+# Disabled in tests so actual errors bubble up for debugging
+if os.getenv("TESTING") != "true":
 
-    # Check for common connection issues
-    if "could not connect" in error_msg.lower() or "connection" in error_msg.lower():
+    @app.exception_handler(OperationalError)
+    async def database_operational_error_handler(
+        request: Request, exc: OperationalError
+    ):
+        """Handle database connection/operation errors"""
+        logger.error(f"Database operational error: {exc}", exc_info=True)
+        error_msg = str(exc)
+
+        # Check for common connection issues
+        if (
+            "could not connect" in error_msg.lower()
+            or "connection" in error_msg.lower()
+        ):
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "detail": "Database connection error. Please try again.",
+                    "error": "database_connection_error",
+                    "hint": "If using Supabase, ensure you're using the connection pooling URL (port 6543) instead of direct connection (port 5432)",
+                },
+            )
+        elif "timeout" in error_msg.lower():
+            return JSONResponse(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                content={
+                    "detail": "Database query timeout. Please try again.",
+                    "error": "database_timeout",
+                },
+            )
+
         return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "detail": "Database connection error. Please try again.",
-                "error": "database_connection_error",
-                "hint": "If using Supabase, ensure you're using the connection pooling URL (port 6543) instead of direct connection (port 5432)",
-            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Database error occurred", "error": "database_error"},
         )
-    elif "timeout" in error_msg.lower():
+
+    @app.exception_handler(SQLAlchemyError)
+    async def database_error_handler(request: Request, exc: SQLAlchemyError):
+        """Handle general SQLAlchemy errors"""
+        logger.error(f"Database error: {exc}", exc_info=True)
         return JSONResponse(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            content={
-                "detail": "Database query timeout. Please try again.",
-                "error": "database_timeout",
-            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Database error occurred", "error": "database_error"},
         )
-
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Database error occurred", "error": "database_error"},
-    )
-
-
-@app.exception_handler(SQLAlchemyError)
-async def database_error_handler(request: Request, exc: SQLAlchemyError):
-    """Handle general SQLAlchemy errors"""
-    logger.error(f"Database error: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Database error occurred", "error": "database_error"},
-    )
 
 
 # Note: In production, disable this and use Alembic migrations instead
 # Only create tables if using SQLite (for local dev), not for PostgreSQL/Supabase
-if settings.DATABASE_URL.startswith("sqlite"):
+# Skip table creation in tests - tests handle their own table creation via fixtures
+if settings.DATABASE_URL.startswith("sqlite") and os.getenv("TESTING") != "true":
     Base.metadata.create_all(bind=engine)
 
 
