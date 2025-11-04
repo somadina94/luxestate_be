@@ -198,17 +198,23 @@ except Exception as e:
     $ALEMBIC_CMD stamp f987ec4cb404 2>&1 || echo "Could not stamp base revision"
   fi
   
-  # Run migrations
-  echo -e "${YELLOW}Running migrations...${NC}"
-  $ALEMBIC_CMD upgrade head || {
-    echo -e "${RED}Migration failed. See alembic logs above.${NC}"
-    echo -e "${YELLOW}Debug info:${NC}"
-    echo -e "  Current revision: $($ALEMBIC_CMD current 2>&1 || echo 'unknown')"
-    echo -e "  Migration files present:"
-    ls -la "${APP_DIR}/alembic/versions/"*.py 2>&1 || echo "  Could not list files"
-    echo -e "  Try manually: alembic stamp f987ec4cb404 && alembic upgrade head${NC}"
-    # Don't exit - allow deployment to continue
-  }
+  # Check if we're already at head (optimization - skip if no new migrations)
+  HEAD_REV=$($ALEMBIC_CMD heads 2>/dev/null | grep -oE '[a-f0-9]{12}' | head -1 || echo "")
+  if [ -n "$CURRENT_REV" ] && [ -n "$HEAD_REV" ] && [ "$CURRENT_REV" = "$HEAD_REV" ]; then
+    echo -e "${GREEN}Database is already at head revision ($CURRENT_REV). No migrations needed.${NC}"
+  else
+    # Run migrations
+    echo -e "${YELLOW}Running migrations...${NC}"
+    $ALEMBIC_CMD upgrade head || {
+      echo -e "${RED}Migration failed. See alembic logs above.${NC}"
+      echo -e "${YELLOW}Debug info:${NC}"
+      echo -e "  Current revision: $($ALEMBIC_CMD current 2>&1 || echo 'unknown')"
+      echo -e "  Migration files present:"
+      ls -la "${APP_DIR}/alembic/versions/"*.py 2>&1 || echo "  Could not list files"
+      echo -e "  Try manually: alembic stamp f987ec4cb404 && alembic upgrade head${NC}"
+      # Don't exit - allow deployment to continue
+    }
+  fi
 fi
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
