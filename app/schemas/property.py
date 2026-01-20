@@ -12,6 +12,7 @@ class PropertySearchParams(BaseModel):
     state: Optional[str] = None
     country: Optional[str] = None
     zip_code: Optional[str] = None
+    overview_image: Optional[str] = None
 
     # Price filters
     min_price: Optional[float] = Field(None, ge=0)
@@ -77,6 +78,7 @@ class PropertyBase(BaseModel):
     features: Optional[List[str]] = None
     amenities: Optional[List[str]] = None
     listing_type: ListingType
+    overview_image: Optional[str] = None
 
 
 class PropertyCreate(PropertyBase):
@@ -94,6 +96,7 @@ class PropertyUpdate(BaseModel):
     features: Optional[List[str]] = None
     amenities: Optional[List[str]] = None
     listing_type: Optional[ListingType] = None
+    overview_image: Optional[str] = None
 
 
 class PropertyResponse(PropertyBase):
@@ -105,6 +108,7 @@ class PropertyResponse(PropertyBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     listing_type: ListingType
+    overview_image: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 

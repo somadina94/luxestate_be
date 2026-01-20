@@ -196,6 +196,13 @@ async def set_primary_image(
 
     # Set is_primary on this image
     image.is_primary = True
+
+    # Also update the property's overview_image to this new primary image
+    property_obj = db.query(Property).filter(Property.id == image.property_id).first()
+    if property_obj:
+        property_obj.overview_image = image.file_url  # <-- set the new overview image
+        db.add(property_obj)
+
     db.commit()
     db.refresh(image)
 
@@ -206,7 +213,10 @@ async def set_primary_image(
         resource_type="property_image",
         resource_id=image_id,
         user_id=user.get("id"),
-        changes={"is_primary": True},
+        changes={
+            "is_primary": True,
+            "overview_image": image.file_url if property_obj else None,
+        },
         status="success",
         status_code=status.HTTP_200_OK,
         ip_address=request.headers.get("x-forwarded-for")
@@ -220,4 +230,5 @@ async def set_primary_image(
         "message": "Image marked as primary successfully",
         "image_id": image_id,
         "is_primary": image.is_primary,
+        "overview_image": property_obj.overview_image if property_obj else None,
     }
