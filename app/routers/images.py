@@ -170,3 +170,54 @@ async def update_order_index(
         "image_id": image_id,
         "new_order_index": image.order_index,
     }
+
+
+@router.patch("/{image_id}/primary", status_code=status.HTTP_200_OK)
+async def set_primary_image(
+    db: db_dependency,
+    user: user_dependency,
+    image_id: int,
+    request: Request,
+):
+    # Fetch the image
+    image = db.query(PropertyImage).filter(PropertyImage.id == image_id).first()
+    if not image:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Image with id {image_id} not found",
+        )
+
+    # Unset is_primary for all other images of the same property
+    db.query(PropertyImage).filter(
+        PropertyImage.property_id == image.property_id,
+        PropertyImage.id != image_id,
+        PropertyImage.is_primary == True,
+    ).update({PropertyImage.is_primary: False}, synchronize_session=False)
+
+    # Set is_primary on this image
+    image.is_primary = True
+    db.commit()
+    db.refresh(image)
+
+    # Audit log
+    AuditLogService().create_log(
+        db=db,
+        action="property_image.set_primary",
+        resource_type="property_image",
+        resource_id=image_id,
+        user_id=user.get("id"),
+        changes={"is_primary": True},
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
+    )
+
+    return {
+        "message": "Image marked as primary successfully",
+        "image_id": image_id,
+        "is_primary": image.is_primary,
+    }
