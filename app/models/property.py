@@ -68,12 +68,17 @@ class Property(Base):
     lot_size = Column(Float, nullable=True)
     year_built = Column(Integer, nullable=True)
 
+    # Optional overview image
+    overview_image = Column(String(500), nullable=True)
+
     # Features & Amenities
     features = Column(JSON, nullable=True)  # ["pool", "garage", "garden"]
     amenities = Column(JSON, nullable=True)  # ["gym", "concierge", "parking"]
 
     # Agent/Owner
-    agent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    agent_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
 
     # Metadata
     is_featured = Column(Boolean, default=False)
