@@ -86,18 +86,18 @@ class PropertyCreate(PropertyBase):
 
 
 class PropertyUpdate(BaseModel):
-    title: str = Field(..., max_length=200)
+    title: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = None
-    price: float = Field(..., gt=0)
-    currency: str = Field(default="USD", max_length=3)
-    address: str = Field(..., max_length=500)
-    city: str = Field(..., max_length=100)
-    state: str = Field(..., max_length=100)
-    zip_code: str = Field(..., max_length=20)
-    country: str = Field(default="USA", max_length=100)
+    price: Optional[float] = Field(None, gt=0)
+    currency: Optional[str] = Field(default="USD", max_length=3)
+    address: Optional[str] = Field(None, max_length=500)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    zip_code: Optional[str] = Field(None, max_length=20)
+    country: Optional[str] = Field(default="USA", max_length=100)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    property_type: PropertyType
+    property_type: Optional[PropertyType] = None
     bedrooms: Optional[int] = Field(None, ge=0)
     bathrooms: Optional[float] = Field(None, ge=0)
     square_feet: Optional[int] = Field(None, gt=0)
@@ -105,7 +105,7 @@ class PropertyUpdate(BaseModel):
     year_built: Optional[int] = Field(None, ge=1800, le=2024)
     features: Optional[List[str]] = None
     amenities: Optional[List[str]] = None
-    listing_type: ListingType
+    listing_type: Optional[ListingType] = None
     overview_image: Optional[str] = None
 
 
