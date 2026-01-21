@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = "test-secret-key"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 300000
 
     # Cloudinary
     CLOUDINARY_CLOUD_NAME: str = "test-cloudinary"
