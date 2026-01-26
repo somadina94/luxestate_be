@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Configuration (use the invoking user if run with sudo)
 RUN_USER=${SUDO_USER:-$USER}
-APP_DIR=${APP_DIR:-/home/$RUN_USER/luxestate}
+APP_DIR=${APP_DIR:-/home/$RUN_USER/luxestate/server}
 PYTHON=${PYTHON:-python3}
 PORT=${PORT:-3002}
 SERVICE_NAME=${SERVICE_NAME:-luxestate}
