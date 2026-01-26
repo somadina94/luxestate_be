@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy to VPS
 
 on:
   push:
@@ -42,17 +42,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
           script: |
             # Ensure project directory exists and fix ownership (avoids .git permission issues)
-            APP_DIR="/home/${{ secrets.EC2_USERNAME }}/luxestate"
+            APP_DIR="/home/${{ secrets.VPS_USERNAME }}/luxestate/server"
             mkdir -p "$APP_DIR"
-            sudo chown -R "${{ secrets.EC2_USERNAME }}:${{ secrets.EC2_USERNAME }}" "$APP_DIR"
+            sudo chown -R "${{ secrets.VPS_USERNAME }}:${{ secrets.VPS_USERNAME }}" "$APP_DIR"
             cd "$APP_DIR"
 
             # Pull latest code from GitHub (same as deploy.sh logic)
