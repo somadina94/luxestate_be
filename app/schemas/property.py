@@ -98,6 +98,7 @@ class PropertyUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     property_type: Optional[PropertyType] = None
+    status: Optional[PropertyStatus] = None
     bedrooms: Optional[int] = Field(None, ge=0)
     bathrooms: Optional[float] = Field(None, ge=0)
     square_feet: Optional[int] = Field(None, gt=0)
