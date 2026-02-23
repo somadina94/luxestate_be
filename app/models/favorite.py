@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -17,6 +17,12 @@ class Favorite(Base):
         nullable=False,
         index=True,
     )
+    # Snapshot from property at favorite time (for listing without joining)
+    overview_image = Column(String(500), nullable=True)
+    address = Column(String(500), nullable=True)
+    price = Column(Float, nullable=True)
+    currency = Column(String(3), nullable=True)
+    year_built = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
