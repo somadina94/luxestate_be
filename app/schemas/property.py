@@ -108,6 +108,7 @@ class PropertyUpdate(BaseModel):
     amenities: Optional[List[str]] = None
     listing_type: Optional[ListingType] = None
     overview_image: Optional[str] = None
+    is_featured: Optional[bool] = False
 
 
 class PropertyResponse(PropertyBase):
