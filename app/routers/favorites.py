@@ -50,7 +50,15 @@ def add_favorite(
     if existing:
         return existing
 
-    fav = Favorite(user_id=current_user["id"], property_id=property_id)
+    fav = Favorite(
+        user_id=current_user["id"],
+        property_id=property_id,
+        overview_image=prop.overview_image,
+        address=prop.address,
+        price=prop.price,
+        currency=prop.currency,
+        year_built=prop.year_built,
+    )
     db.add(fav)
     db.commit()
     db.refresh(fav)
