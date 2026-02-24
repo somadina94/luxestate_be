@@ -18,6 +18,13 @@ class Conversation(Base):
     property_id = Column(Integer, nullable=True)
     type = Column(String, default="user-agent")  # user-agent | support
 
+    # Snapshot names and property title for display without joins
+    user_first_name = Column(String(100), nullable=True)
+    user_last_name = Column(String(100), nullable=True)
+    agent_first_name = Column(String(100), nullable=True)
+    agent_last_name = Column(String(100), nullable=True)
+    property_title = Column(String(500), nullable=True)
+
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
 

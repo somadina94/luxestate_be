@@ -11,6 +11,11 @@ class ConversationCreate(BaseModel):
 
 class ConversationResponse(ConversationCreate):
     id: int
+    user_first_name: str | None = None
+    user_last_name: str | None = None
+    agent_first_name: str | None = None
+    agent_last_name: str | None = None
+    property_title: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

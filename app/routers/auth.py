@@ -128,7 +128,7 @@ async def login_for_access_token(
     db.commit()
     db.refresh(database_user)
     token = create_access_token(
-        user.email, user.id, user.role.value, timedelta(minutes=60)
+        user.email, user.id, user.role.value, timedelta(days=90)
     )
     result = {
         "access_token": token,
@@ -173,7 +173,7 @@ async def verify_login(db: db_dependency, access_token: str, request: Request):
         )
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="User not found")
     token = create_access_token(
-        user.email, user.id, user.role.value, timedelta(minutes=60)
+        user.email, user.id, user.role.value, timedelta(days=90)
     )
     user.verification_code = None
     user.verification_code_expires = None
