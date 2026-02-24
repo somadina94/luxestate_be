@@ -1,6 +1,6 @@
 import json
 from typing import Annotated
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette import status
 from app.schemas.notification import WebPushSubscribe
 from app.services.auth_service import get_current_user
@@ -55,6 +55,73 @@ def list_notifications(db: Session = Depends(get_db), user=Depends(get_current_u
         }
         for r in rows
     ]
+
+
+@router.get("/{notification_id}")
+def get_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    request: Request = None,
+):
+    notification = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id, Notification.user_id == user["id"])
+        .first()
+    )
+    if not notification:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    AuditLogService().create_log(
+        db=db,
+        action="notification.get",
+        resource_type="notification",
+        resource_id=notification_id,
+        user_id=user["id"],
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=request.headers.get("x-forwarded-for") if request else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+        request_method=request.method if request else None,
+        request_path=request.url.path if request else None,
+    )
+    return {
+        "id": notification.id,
+        "title": notification.title,
+        "body": notification.body,
+        "is_read": notification.is_read,
+        "created_at": notification.created_at,
+    }
+
+
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    request: Request = None,
+):
+    notification = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id, Notification.user_id == user["id"])
+        .first()
+    )
+    if not notification:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    db.delete(notification)
+    db.commit()
+    AuditLogService().create_log(
+        db=db,
+        action="notification.delete",
+        resource_type="notification",
+        resource_id=notification_id,
+        user_id=user["id"],
+        status="success",
+        status_code=status.HTTP_204_NO_CONTENT,
+        ip_address=request.headers.get("x-forwarded-for") if request else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+        request_method=request.method if request else None,
+        request_path=request.url.path if request else None,
+    )
 
 
 @router.patch("/read")
