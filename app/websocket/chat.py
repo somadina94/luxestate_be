@@ -147,53 +147,54 @@ async def chat_websocket_multi(websocket: WebSocket, db: Session):
         )
         return
 
-    # connect without conversation_id
-    await manager.connect_multi(user_id=user["id"], websocket=websocket)
-
-    # Auto-subscribe to all conversations user is part of
-    conversations = (
-        db.query(Conversation)
-        .filter(
-            or_(
-                Conversation.user_id == user["id"],
-                Conversation.agent_id == user["id"],
-                Conversation.admin_id == user["id"],
-            )
-        )
-        .all()
-    )
-
-    subscribed_count = 0
-    for conversation in conversations:
-        await manager.subscribe(websocket, conversation.id, user["id"])
-        subscribed_count += 1
-
-    # Send confirmation with subscribed conversations
-    await websocket.send_json(
-        {
-            "type": "connected",
-            "message": "WebSocket connected and auto-subscribed to conversations",
-            "subscribed_conversations": [conv.id for conv in conversations],
-            "count": subscribed_count,
-        }
-    )
-
-    AuditLogService().create_log(
-        db=db,
-        action="chat.ws_connect_multi",
-        resource_type="chat",
-        resource_id=None,
-        user_id=user["id"],
-        status="success",
-        status_code=101,
-    )
-
+    # connect without conversation_id — wrap all post-auth logic so no exception propagates
+    # (framework would send HTTP error on WS scope -> RuntimeError)
     try:
+        await manager.connect_multi(user_id=user["id"], websocket=websocket)
+
+        # Auto-subscribe to all conversations user is part of
+        conversations = (
+            db.query(Conversation)
+            .filter(
+                or_(
+                    Conversation.user_id == user["id"],
+                    Conversation.agent_id == user["id"],
+                    Conversation.admin_id == user["id"],
+                )
+            )
+            .all()
+        )
+
+        subscribed_count = 0
+        for conversation in conversations:
+            await manager.subscribe(websocket, conversation.id, user["id"])
+            subscribed_count += 1
+
+        # Send confirmation with subscribed conversations
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "message": "WebSocket connected and auto-subscribed to conversations",
+                "subscribed_conversations": [conv.id for conv in conversations],
+                "count": subscribed_count,
+            }
+        )
+
+        AuditLogService().create_log(
+            db=db,
+            action="chat.ws_connect_multi",
+            resource_type="chat",
+            resource_id=None,
+            user_id=user["id"],
+            status="success",
+            status_code=101,
+        )
+
         while True:
             try:
                 data = await websocket.receive_json()
             except WebSocketDisconnect:
-                raise  # Let outer handler run disconnect_multi; do not swallow
+                break  # Exit loop; cleanup in finally (do not re-raise or framework sends HTTP response on WS scope)
             except Exception:
                 continue
 
@@ -517,15 +518,26 @@ async def chat_websocket_multi(websocket: WebSocket, db: Session):
 
             # other types can be added: typing, seen, etc.
 
-    except WebSocketDisconnect:
-        user_id = manager.websocket_to_user.get(websocket)
-        manager.disconnect_multi(websocket)
-        AuditLogService().create_log(
-            db=db,
-            action="chat.ws_disconnect_multi",
-            resource_type="chat",
-            resource_id=None,
-            user_id=user_id,
-            status="success",
-            status_code=1000,
-        )
+    except Exception:
+        # Swallow all exceptions so nothing propagates to the framework. If we re-raise, the
+        # framework sends an HTTP error response on the WebSocket scope -> RuntimeError.
+        pass
+    finally:
+        # Always run cleanup on exit (disconnect, break, or any exception). Never raise from here.
+        try:
+            user_id = manager.websocket_to_user.get(websocket)
+            manager.disconnect_multi(websocket)
+            try:
+                AuditLogService().create_log(
+                    db=db,
+                    action="chat.ws_disconnect_multi",
+                    resource_type="chat",
+                    resource_id=None,
+                    user_id=user_id,
+                    status="success",
+                    status_code=1000,
+                )
+            except Exception:
+                pass
+        except Exception:
+            pass
