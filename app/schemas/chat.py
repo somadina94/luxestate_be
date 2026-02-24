@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConversationCreate(BaseModel):
@@ -32,7 +32,7 @@ class MessageResponse(MessageCreate):
     id: int
     conversation_id: int
     sender_id: int
-    created_at: datetime
+    created_at: datetime = Field(validation_alias="timestamp")
     is_read: bool
 
     model_config = ConfigDict(from_attributes=True)
