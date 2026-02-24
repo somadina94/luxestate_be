@@ -2,7 +2,7 @@ import json
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette import status
-from app.schemas.notification import WebPushSubscribe
+from app.schemas.notification import MarkReadBody, WebPushSubscribe
 from app.services.auth_service import get_current_user
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
@@ -125,8 +125,13 @@ def delete_notification(
 
 
 @router.patch("/read")
-def mark_read(ids: dict, db: Session = Depends(get_db), user=Depends(get_current_user), request: Request = None):
-    ids_list = ids.get("ids", [])
+def mark_read(
+    body: MarkReadBody,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    request: Request = None,
+):
+    ids_list = body.ids
     if not ids_list:
         return {"ok": False}
     db.query(Notification).filter(
