@@ -1,7 +1,7 @@
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from app.database import SessionLocal
 from app.services.auth_service import get_current_user
 from app.models.chat import Conversation, Message
@@ -70,6 +70,46 @@ def get_conversations(
     )
 
     return conversations
+
+
+@router.get("/unread-count")
+def get_unread_count(
+    db: db_dependency,
+    user: user_dependency,
+    http_req: Request,
+):
+    """Return count of messages received by the current user that are unread."""
+    user_id = user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    count = (
+        db.query(func.count(Message.id))
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .filter(
+            or_(
+                Conversation.user_id == user_id,
+                Conversation.agent_id == user_id,
+                Conversation.admin_id == user_id,
+            )
+        )
+        .filter(Message.sender_id != user_id)
+        .filter(Message.is_read == False)
+        .scalar()
+    ) or 0
+
+    AuditLogService().create_log(
+        db=db,
+        action="chat.unread_count",
+        resource_type="message",
+        resource_id=None,
+        user_id=user_id,
+        status="success",
+        status_code=200,
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return {"unread_count": count}
 
 
 @router.post("/create", response_model=ConversationResponse)
