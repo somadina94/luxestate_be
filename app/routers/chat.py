@@ -5,6 +5,8 @@ from sqlalchemy import or_
 from app.database import SessionLocal
 from app.services.auth_service import get_current_user
 from app.models.chat import Conversation, Message
+from app.models.user import User
+from app.models.property import Property
 from app.schemas.chat import ConversationCreate, ConversationResponse, MessageResponse
 from app.services.audit_log_service import AuditLogService
 
@@ -101,6 +103,20 @@ def create_conversation(
         )
         return existing_convo
     convo = Conversation(**request.model_dump())
+    # Populate display snapshot from User and Property
+    user_entity = db.query(User).filter(User.id == request.user_id).first()
+    if user_entity:
+        convo.user_first_name = user_entity.first_name
+        convo.user_last_name = user_entity.last_name
+    if request.agent_id:
+        agent_entity = db.query(User).filter(User.id == request.agent_id).first()
+        if agent_entity:
+            convo.agent_first_name = agent_entity.first_name
+            convo.agent_last_name = agent_entity.last_name
+    if request.property_id:
+        prop = db.query(Property).filter(Property.id == request.property_id).first()
+        if prop:
+            convo.property_title = prop.title
     db.add(convo)
     db.commit()
     db.refresh(convo)
