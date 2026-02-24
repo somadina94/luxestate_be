@@ -79,20 +79,10 @@ class ConnectionManager:
         for ws in list(self.by_conversation[conversation_id]):
             try:
                 await ws.send_text(payload)
-            except:
+            except Exception:
                 disconnected.append(ws)
-        # cleanup
         for ws in disconnected:
-            for uid, sockets in list(self.by_user.items()):
-                if ws in sockets:
-                    sockets.remove(ws)
-                    if not sockets:
-                        del self.by_user[uid]
-            if (
-                conversation_id in self.by_conversation
-                and ws in self.by_conversation[conversation_id]
-            ):
-                self.by_conversation[conversation_id].remove(ws)
+            self.disconnect_multi(ws)
 
     async def is_user_online(self, user_id: int) -> bool:
         return user_id in self.by_user and len(self.by_user[user_id]) > 0
@@ -106,16 +96,10 @@ class ConnectionManager:
         for ws in list(self.by_user[user_id]):
             try:
                 await ws.send_text(payload)
-            except:
+            except Exception:
                 disconnected.append(ws)
         for ws in disconnected:
-            self.by_user[user_id].remove(ws)
-            # optionally cleanup by_conversation as well
-            for conv_id, sockets in list(self.by_conversation.items()):
-                if ws in sockets:
-                    sockets.remove(ws)
-                    if not sockets:
-                        del self.by_conversation[conv_id]
+            self.disconnect_multi(ws)
 
 
 manager = ConnectionManager()
@@ -208,6 +192,8 @@ async def chat_websocket_multi(websocket: WebSocket, db: Session):
         while True:
             try:
                 data = await websocket.receive_json()
+            except WebSocketDisconnect:
+                raise  # Let outer handler run disconnect_multi; do not swallow
             except Exception:
                 continue
 
