@@ -24,6 +24,34 @@ db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
+@router.get("/unread-count")
+def get_unread_count(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    request: Request = None,
+):
+    """Return count of notifications for the current user that are unread."""
+    count = (
+        db.query(Notification)
+        .filter(Notification.user_id == user["id"], Notification.is_read == False)
+        .count()
+    )
+    AuditLogService().create_log(
+        db=db,
+        action="notification.unread_count",
+        resource_type="notification",
+        resource_id=None,
+        user_id=user["id"],
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=request.headers.get("x-forwarded-for") if request else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+        request_method=request.method if request else None,
+        request_path=request.url.path if request else None,
+    )
+    return {"unread_count": count}
+
+
 @router.get("/")
 def list_notifications(db: Session = Depends(get_db), user=Depends(get_current_user), request: Request = None):
     rows = (
