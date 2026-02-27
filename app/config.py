@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     EXPO_PUSH_URL: str = "https://exp.host/--/api/v2/push/send"
     VAPID_PUBLIC_KEY: str = ""
     VAPID_PRIVATE_KEY: str = ""
+    # Must match the frontend origin exactly (scheme + host + port). Use http for local dev, https in production.
+    # Wrong scheme (http vs https) or port causes 401 from push service.
+    VAPID_AUDIENCE: str = "https://luxestatebe.jahbyte.com"
     VAPID_CLAIMS: dict[str, str] = {"sub": "mailto:support@jahbyte.com"}
 
     STRIPE_PUBLISHABLE_KEY: str = ""
