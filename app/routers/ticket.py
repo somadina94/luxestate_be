@@ -36,7 +36,10 @@ admin_dependency = Annotated[
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_ticket(
-    db: db_dependency, user: user_dependency, request: TicketCreate, request_http: Request
+    db: db_dependency,
+    user: user_dependency,
+    request: TicketCreate,
+    request_http: Request,
 ):
     result = TicketService(db).create_ticket(request, user.get("id"))
     AuditLogService().create_log(
@@ -166,7 +169,7 @@ def post_message(
     response_model=TicketResponse,
     status_code=status.HTTP_200_OK,
 )
-def post_message(
+def update_ticket(
     db: db_dependency,
     user: admin_dependency,
     ticket_request: TicketUpdate,
@@ -184,6 +187,35 @@ def post_message(
         resource_id=ticket_id,
         user_id=user.get("id"),
         changes=ticket_request.model_dump(exclude_unset=True),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_method=request.method,
+        request_path=request.url.path,
+    )
+    return result
+
+
+@router.get(
+    "/{ticket_id}",
+    response_model=TicketResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_ticket_with_messages(
+    db: db_dependency,
+    user: user_dependency,
+    ticket_id: int,
+    request: Request,
+):
+    result = TicketService(db).get_ticket_with_messages(ticket_id)
+    AuditLogService().create_log(
+        db=db,
+        action="ticket.get_with_messages",
+        resource_type="ticket",
+        resource_id=ticket_id,
+        user_id=user.get("id"),
         status="success",
         status_code=status.HTTP_200_OK,
         ip_address=request.headers.get("x-forwarded-for")
