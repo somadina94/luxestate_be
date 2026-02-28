@@ -109,12 +109,30 @@ def dispatch_notification(user_id: int, title: str, body: str, payload: dict):
         token = db.query(UserPushToken).filter(UserPushToken.user_id == user_id).first()
         results = {"expo": None, "web": None, "email": None}
         if token:
+            user = db.query(User).filter(User.id == user_id).first()
+            push_data = dict(payload)
+            if user and user.role:
+                push_data["path"] = (
+                    f"/buyer-dashboard/notifications/{n.id}"
+                    if user.role == "buyer"
+                    else (
+                        f"/seller-dashboard/notifications/{n.id}"
+                        if user.role == "seller"
+                        else (
+                            f"/admin-dashboard/notifications/{n.id}"
+                            if user.role == "admin"
+                            else f"/buyer-dashboard/notifications/{n.id}"
+                        )
+                    )
+                )
+            else:
+                push_data["path"] = f"/buyer-dashboard/notifications/{n.id}"
             if token.expo_token:
                 results["expo"] = send_expo_push(token.expo_token, title, body, payload)
             if token.web_push_subscription:
                 try:
                     sub = json.loads(token.web_push_subscription)
-                    results["web"] = send_web_push(sub, title, body, payload)
+                    results["web"] = send_web_push(sub, title, body, push_data)
                 except Exception as e:
                     results["web"] = {"ok": False, "detail": str(e)}
 
