@@ -1,17 +1,14 @@
 import json
+import time
+from urllib.parse import urlparse
 import requests
 import smtplib
-import asyncio
-import logging
-from typing import Optional
 from pywebpush import webpush, WebPushException
 from email.message import EmailMessage
 from app.config import settings
 from app.database import SessionLocal
 from app.models.notification import UserPushToken, Notification
 from app.models.user import User
-
-logger = logging.getLogger(__name__)
 
 
 # ---------- Expo push ----------
@@ -39,7 +36,9 @@ def _normalize_subscription(sub: dict) -> dict:
         return sub
     if "endpoint" in sub and sub.get("endpoint"):
         return sub
-    inner = sub.get("subscription") if isinstance(sub.get("subscription"), dict) else None
+    inner = (
+        sub.get("subscription") if isinstance(sub.get("subscription"), dict) else None
+    )
     if inner and inner.get("endpoint"):
         return inner
     return sub
@@ -48,23 +47,31 @@ def _normalize_subscription(sub: dict) -> dict:
 def send_web_push(subscription_info: dict, title: str, body: str, data: dict):
     sub = _normalize_subscription(subscription_info)
     if not sub or not sub.get("endpoint"):
-        logger.warning("Web push skipped: subscription missing endpoint")
         return {"ok": False, "detail": "subscription missing endpoint"}
-    vapid_claims = {**settings.VAPID_CLAIMS, "aud": settings.VAPID_AUDIENCE}
+    endpoint = sub.get("endpoint", "")
+    # aud MUST be the origin of the push resource URL (the endpoint), not the frontend origin.
+    parsed = urlparse(endpoint)
+    aud = (
+        f"{parsed.scheme}://{parsed.netloc}"
+        if parsed.scheme and parsed.netloc
+        else settings.VAPID_AUDIENCE
+    )
+    vapid_claims = {
+        **settings.VAPID_CLAIMS,
+        "aud": aud,
+        "exp": int(time.time()) + 12 * 3600,
+    }
+
     try:
         webpush(
             sub,
             json.dumps({"title": title, "body": body, "data": data}),
             vapid_private_key=settings.VAPID_PRIVATE_KEY,
             vapid_claims=vapid_claims,
+            ttl=86400,  # Required by WNS/Edge (400 without it); 24h in seconds
         )
         return {"ok": True}
     except WebPushException as ex:
-        logger.warning(
-            "Web push failed: %s (endpoint: %s)",
-            ex,
-            sub.get("endpoint", "")[:80],
-        )
         return {"ok": False, "detail": str(ex)}
 
 
