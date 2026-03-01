@@ -104,3 +104,6 @@ class TicketService:
         self.db.commit()
         self.db.refresh(ticket)
         return ticket
+
+    def get_my_tickets(self, user_id: int):
+        return self.db.query(Ticket).filter(Ticket.user_id == user_id).all()
