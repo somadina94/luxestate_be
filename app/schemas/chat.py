@@ -1,21 +1,22 @@
+from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConversationCreate(BaseModel):
     user_id: int
-    agent_id: int | None = None
-    property_id: int | None = None
+    agent_id: Optional[int] = None
+    property_id: Optional[int] = None
     type: str
 
 
 class ConversationResponse(ConversationCreate):
     id: int
-    user_first_name: str | None = None
-    user_last_name: str | None = None
-    agent_first_name: str | None = None
-    agent_last_name: str | None = None
-    property_title: str | None = None
+    user_first_name: Optional[str] = None
+    user_last_name: Optional[str] = None
+    agent_first_name: Optional[str] = None
+    agent_last_name: Optional[str] = None
+    property_title: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

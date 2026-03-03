@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, Request
-from typing import Annotated
+from typing import Annotated, Optional
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
 from app.services.auth_service import get_current_user
@@ -129,7 +129,7 @@ def get_user_subscriptions(
     "/user/active",
     status_code=status.HTTP_200_OK,
     description="Get the active subscription for a user",
-    response_model=SubscriptionResponse | None,
+    response_model=Optional[SubscriptionResponse],
 )
 def get_user_active_subscription(
     db: db_dependency,
