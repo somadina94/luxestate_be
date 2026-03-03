@@ -34,7 +34,7 @@ admin_dependency = Annotated[
 ]
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
 def create_ticket(
     db: db_dependency,
     user: user_dependency,
