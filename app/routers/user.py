@@ -7,7 +7,7 @@ from app.models.user import User
 from typing import Annotated
 from sqlalchemy.orm import Session
 from app.services.auth_service import get_current_user
-from app.schemas.user import UserResponse
+from app.schemas.user import UserResponse, UserUpdate
 from app.services.audit_log_service import AuditLogService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -49,6 +49,41 @@ def get_me(user: user_dependency, db: db_dependency, http_req: Request):
         request_path=http_req.url.path,
     )
     return result
+
+
+@router.patch("/", status_code=status.HTTP_200_OK, response_model=UserResponse)
+def update_me(
+    body: UserUpdate,
+    user: user_dependency,
+    db: db_dependency,
+    http_req: Request,
+):
+    if not user:
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    database_user: User = db.query(User).filter(User.id == user.get("id")).first()
+    if not database_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(database_user, key, value)
+    db.commit()
+    db.refresh(database_user)
+    AuditLogService().create_log(
+        db=db,
+        action="user.update_self",
+        resource_type="user",
+        resource_id=user.get("id"),
+        user_id=user.get("id"),
+        changes=update_data,
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return database_user
 
 
 @router.delete("/deactivate", status_code=status.HTTP_200_OK)

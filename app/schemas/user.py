@@ -26,6 +26,14 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 
+class UserUpdate(BaseModel):
+    """Fields allowed for profile update (partial)."""
+
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
