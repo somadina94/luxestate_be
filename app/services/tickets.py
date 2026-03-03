@@ -20,6 +20,13 @@ class TicketService:
         self.db.add(ticket)
         self.db.commit()
         self.db.refresh(ticket)
+        # Eager-load user (and messages) so TicketResponse serializes correctly
+        ticket = (
+            self.db.query(Ticket)
+            .options(joinedload(Ticket.user), joinedload(Ticket.messages))
+            .filter(Ticket.id == ticket.id)
+            .first()
+        )
         return ticket
 
     def add_message(self, ticket_id: int, user_id: int, message: str):
