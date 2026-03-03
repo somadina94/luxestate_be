@@ -1,6 +1,7 @@
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_, func, delete
 from app.database import SessionLocal
 from app.models.property import Property, PropertyStatus, PropertyType
+from app.models.property_images import PropertyImage
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertySearchParams
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -85,6 +86,10 @@ class PropertyService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not authorized to delete this property",
             )
+
+        # Delete related property images first to avoid FK constraint errors
+        # (PropertyImage FK has no ondelete=CASCADE at DB level)
+        db.execute(delete(PropertyImage).where(PropertyImage.property_id == property_id))
 
         db.delete(property)
         db.commit()
