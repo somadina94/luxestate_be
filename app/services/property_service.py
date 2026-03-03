@@ -2,6 +2,7 @@ from sqlalchemy import select, and_, or_, func, delete
 from app.database import SessionLocal
 from app.models.property import Property, PropertyStatus, PropertyType
 from app.models.property_images import PropertyImage
+from app.models.favorite import Favorite
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertySearchParams
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -90,6 +91,9 @@ class PropertyService:
         # Delete related property images first to avoid FK constraint errors
         # (PropertyImage FK has no ondelete=CASCADE at DB level)
         db.execute(delete(PropertyImage).where(PropertyImage.property_id == property_id))
+
+        # Delete related favorites so SQLAlchemy doesn't try to nullify property_id (NOT NULL)
+        db.execute(delete(Favorite).where(Favorite.property_id == property_id))
 
         db.delete(property)
         db.commit()

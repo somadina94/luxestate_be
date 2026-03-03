@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
 
@@ -6,9 +8,9 @@ from app.models.user import UserRole
 
 class UserBase(BaseModel):
     email: EmailStr
-    first_name: str | None = None
-    last_name: str | None = None
-    phone: str | None = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -29,9 +31,9 @@ class UserResponse(UserBase):
 class UserUpdate(BaseModel):
     """Fields allowed for profile update (partial)."""
 
-    first_name: str | None = None
-    last_name: str | None = None
-    phone: str | None = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class Token(BaseModel):
