@@ -3,7 +3,7 @@ from starlette.status import HTTP_404_NOT_FOUND
 from app.config import settings
 from app.models.ticket import Ticket, TicketStatus
 from app.models.ticket import TicketMessage
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.ticket import TicketCreate, TicketUpdate
 from app.schemas.ticket import MessageCreate
 from fastapi import HTTPException
@@ -53,7 +53,8 @@ class TicketService:
         self.db.commit()
         self.db.refresh(ticket_message)
         self.db.refresh(ticket)
-        if sender.role == "admin":
+        # When admin replies, notify the ticket owner (buyer/seller). Otherwise notify admin.
+        if sender.role == UserRole.ADMIN:
             send_email(ticket.user.email, ticket.title, ticket_message.message)
         else:
             send_email(settings.EMAIL_FROM, ticket.title, ticket_message.message)
