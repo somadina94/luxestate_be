@@ -64,8 +64,9 @@ class TicketService:
         ticket = (
             self.db.query(Ticket)
             .options(
-                joinedload(Ticket.messages), joinedload(Ticket.user)
-            )  # ✅ Load messages
+                joinedload(Ticket.messages).joinedload(TicketMessage.sender),
+                joinedload(Ticket.user),
+            )
             .filter(Ticket.id == ticket_id)
             .first()
         )
