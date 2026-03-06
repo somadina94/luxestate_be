@@ -1,6 +1,6 @@
 from sqlalchemy import select, and_, or_, func, delete
 from app.database import SessionLocal
-from app.models.property import Property, PropertyStatus, PropertyType
+from app.models.property import Property, PropertyStatus, PropertyType, ListingType
 from app.models.property_images import PropertyImage
 from app.models.favorite import Favorite
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertySearchParams
@@ -140,6 +140,7 @@ class PropertyService:
         # Property details
         property_type: Optional[PropertyType] = None,
         status: Optional[PropertyStatus] = None,
+        listing_type: Optional[ListingType] = None,
         min_bedrooms: Optional[int] = None,
         max_bedrooms: Optional[int] = None,
         min_bathrooms: Optional[float] = None,
@@ -217,6 +218,8 @@ class PropertyService:
             conditions.append(Property.property_type == property_type)
         if status:
             conditions.append(Property.status == status)
+        if listing_type:
+            conditions.append(Property.listing_type == listing_type)
 
         # Bedroom filters
         if min_bedrooms is not None:
@@ -310,6 +313,7 @@ class PropertyService:
             currency=search_params.currency,
             property_type=search_params.property_type,
             status=search_params.status,
+            listing_type=search_params.listing_type,
             min_bedrooms=search_params.min_bedrooms,
             max_bedrooms=search_params.max_bedrooms,
             min_bathrooms=search_params.min_bathrooms,

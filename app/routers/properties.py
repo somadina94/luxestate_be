@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 from app.database import SessionLocal
 from app.models.user import User
-from app.models.property import PropertyType, PropertyStatus
+from app.models.property import PropertyType, PropertyStatus, ListingType
 from app.schemas.property import (
     PropertyCreate,
     PropertyLocationResponse,
@@ -96,6 +96,7 @@ async def search_properties(
     # Property details
     property_type: Optional[PropertyType] = Query(None, description="Type of property"),
     status: Optional[PropertyStatus] = Query(None, description="Property status"),
+    listing_type: Optional[ListingType] = Query(None, description="Listing type (sell, rent, lease)"),
     min_bedrooms: Optional[int] = Query(None, description="Minimum number of bedrooms"),
     max_bedrooms: Optional[int] = Query(None, description="Maximum number of bedrooms"),
     min_bathrooms: Optional[float] = Query(
@@ -161,6 +162,7 @@ async def search_properties(
         currency=currency,
         property_type=property_type,
         status=status,
+        listing_type=listing_type,
         min_bedrooms=min_bedrooms,
         max_bedrooms=max_bedrooms,
         min_bathrooms=min_bathrooms,
