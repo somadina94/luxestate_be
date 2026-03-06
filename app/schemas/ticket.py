@@ -25,6 +25,7 @@ class MessageResponse(MessageBase):
     id: int
     ticket_id: int
     sender_id: int
+    sender: Optional["UserResponse"] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -53,3 +54,7 @@ class TicketResponse(TicketBase):
 class TicketUpdate(BaseModel):
     title: Optional[str] = None
     status: Optional[TicketStatus] = None
+
+
+# Resolve forward reference for MessageResponse.sender
+MessageResponse.model_rebuild()

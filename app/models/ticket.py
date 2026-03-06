@@ -37,3 +37,4 @@ class TicketMessage(Base):
     message = Column(Text)
     created_at = Column(DateTime, default=utc_now)
     ticket = relationship("Ticket", back_populates="messages")
+    sender = relationship("User", foreign_keys=[sender_id])
