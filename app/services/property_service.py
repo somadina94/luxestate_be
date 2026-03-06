@@ -19,15 +19,11 @@ class PropertyService:
         subscription = SubscriptionService(db).get_user_active_subscription(agent_id)
         if subscription:
             limit = getattr(subscription, "listing_limit", None)
-            if limit is not None:
-                current_count = db.query(Property).filter(
-                    Property.agent_id == agent_id
-                ).count()
-                if current_count >= limit:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Listing limit reached. Your subscription allows a maximum of {limit} listings. You have reached this limit.",
-                    )
+            if limit is not None and limit <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Listing limit reached. Your subscription has no remaining listing slots.",
+                )
 
         # Create a new property instance
         new_property = Property(**property_data.model_dump(), agent_id=agent_id)
@@ -35,6 +31,11 @@ class PropertyService:
         db.add(new_property)
         db.commit()
         db.refresh(new_property)  # Return object with ID populated
+
+        # Decrement subscription listing_limit (remaining slots) after successful create
+        if subscription and getattr(subscription, "listing_limit", None) is not None:
+            subscription.listing_limit = subscription.listing_limit - 1
+            db.commit()
 
         return new_property
 
@@ -102,6 +103,12 @@ class PropertyService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not authorized to delete this property",
             )
+
+        # Increment subscription listing_limit (refund slot) before deleting
+        subscription = SubscriptionService(db).get_user_active_subscription(user_id)
+        if subscription and getattr(subscription, "listing_limit", None) is not None:
+            subscription.listing_limit = subscription.listing_limit + 1
+            db.commit()
 
         # Delete related property images first to avoid FK constraint errors
         # (PropertyImage FK has no ondelete=CASCADE at DB level)
