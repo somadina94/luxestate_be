@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from typing import List, Optional
 from datetime import datetime
 from app.services.subscription import SubscriptionService
+from app.models.subscription import SubscriptionStatus
 
 
 class PropertyService:
@@ -35,6 +36,8 @@ class PropertyService:
         # Decrement subscription listing_limit (remaining slots) after successful create
         if subscription and getattr(subscription, "listing_limit", None) is not None:
             subscription.listing_limit = subscription.listing_limit - 1
+            if subscription.listing_limit <= 0:
+                subscription.status = SubscriptionStatus.EXPIRED.value
             db.commit()
 
         return new_property
