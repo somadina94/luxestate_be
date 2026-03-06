@@ -17,7 +17,7 @@ import enum
 
 
 class ListingType(str, enum.Enum):
-    SALE = "sale"
+    SALE = "sell"
     RENT = "rent"
     LEASE = "lease"
 
