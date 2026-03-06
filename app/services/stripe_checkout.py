@@ -104,7 +104,7 @@ class StripeCheckoutService:
                 status=SubscriptionStatus.PAID.value,
                 start_date=datetime.now(),
                 end_date=datetime.now() + timedelta(days=subscription_plan.duration),
-                listing_limit=30,
+                listing_limit=getattr(subscription_plan, "listing_limit", 30),
             )
             self.db.add(subscription)
             self.db.commit()

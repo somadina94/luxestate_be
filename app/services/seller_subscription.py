@@ -50,6 +50,8 @@ class SellerSubscriptionService:
             subscription_plan.duration = subscription_plan_data.duration
         if subscription_plan_data.duration_type is not None:
             subscription_plan.duration_type = subscription_plan_data.duration_type
+        if subscription_plan_data.listing_limit is not None:
+            subscription_plan.listing_limit = subscription_plan_data.listing_limit
         self.db.commit()
         self.db.refresh(subscription_plan)
         return subscription_plan
