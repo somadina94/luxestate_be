@@ -6,7 +6,7 @@ from app.services.auth_service import get_current_user
 from app.services.subscription import SubscriptionService
 from app.dependencies import require_permission, Permission
 from app.services.audit_log_service import AuditLogService
-from app.schemas.subscription import SubscriptionResponse
+from app.schemas.subscription import SubscriptionResponse, SubscriptionUpdate
 
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
@@ -87,7 +87,7 @@ def get_user_subscriptions(
 
             raw = db.execute(
                 text(
-                    "SELECT id, user_id, subscription_plan_id, start_date, end_date, status, created_at, updated_at FROM subscriptions WHERE user_id = :uid"
+                    "SELECT id, user_id, subscription_plan_id, start_date, end_date, status, listing_limit, created_at, updated_at FROM subscriptions WHERE user_id = :uid"
                 ),
                 {"uid": uid},
             ).fetchall()
@@ -101,6 +101,7 @@ def get_user_subscriptions(
                         "start_date": r.start_date,
                         "end_date": r.end_date,
                         "status": r.status,
+                        "listing_limit": getattr(r, "listing_limit", 30),
                         "created_at": getattr(r, "created_at", None),
                         "updated_at": getattr(r, "updated_at", None),
                     }
@@ -163,3 +164,34 @@ def get_user_active_subscription(
         request_path=http_req.url.path,
     )
     return row
+
+
+@router.patch(
+    "/{subscription_id}",
+    status_code=status.HTTP_200_OK,
+    description="Update a subscription (admin only). Use to change listing_limit, status, dates, etc.",
+    response_model=SubscriptionResponse,
+)
+def update_subscription(
+    subscription_id: int,
+    db: db_dependency,
+    admin: admin_dependency,
+    body: SubscriptionUpdate,
+    http_req: Request,
+):
+    updated = SubscriptionService(db).update_subscription(subscription_id, body)
+    AuditLogService().create_log(
+        db=db,
+        action="subscription.update",
+        resource_type="subscription",
+        resource_id=updated.id,
+        user_id=admin.get("id"),
+        status="success",
+        status_code=status.HTTP_200_OK,
+        ip_address=http_req.headers.get("x-forwarded-for")
+        or (http_req.client.host if http_req.client else None),
+        user_agent=http_req.headers.get("user-agent"),
+        request_method=http_req.method,
+        request_path=http_req.url.path,
+    )
+    return updated
