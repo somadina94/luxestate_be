@@ -8,12 +8,27 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from typing import List, Optional
 from datetime import datetime
+from app.services.subscription import SubscriptionService
 
 
 class PropertyService:
     async def create_property(
         self, db: Session, property_data: PropertyCreate, agent_id: int
     ):
+        # Enforce subscription listing limit before creating a new listing
+        subscription = SubscriptionService(db).get_user_active_subscription(agent_id)
+        if subscription:
+            limit = getattr(subscription, "listing_limit", None)
+            if limit is not None:
+                current_count = db.query(Property).filter(
+                    Property.agent_id == agent_id
+                ).count()
+                if current_count >= limit:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Listing limit reached. Your subscription allows a maximum of {limit} listings. You have reached this limit.",
+                    )
+
         # Create a new property instance
         new_property = Property(**property_data.model_dump(), agent_id=agent_id)
 
